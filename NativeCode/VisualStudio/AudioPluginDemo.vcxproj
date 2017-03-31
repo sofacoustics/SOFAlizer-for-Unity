@@ -97,7 +97,9 @@
       <AdditionalDependencies>kernel32.lib;user32.lib;winmm.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y $(TargetPath) ..\..\..\Test_PM\Assets\Plugins\x86\$(TargetName).dll</Command>
+      <Command>mkdir ..\..\Assets\Plugins\x86
+copy $(TargetPath) ..\..\Assets\Plugins\x86\$(TargetName).dll
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -116,12 +118,12 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>kernel32.lib;user32.lib;winmm.lib;mysofa.lib;zlibstat.lib;pthreadVC2.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../../../../Tools/libmysofa\bin\$(Platform)\$(Configuration)\;../../../../Tools/libmysofa\third-party\zlib-1.2.11\contrib\vstudio\vc14\x64\ZlibStatRelease;../../../../Tools/libmysofa\third-party\pthreads-win32\Pre-built.2\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;winmm.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>mkdir ..\..\Assets\Plugins\x86_64
+copy /y $(TargetPath) ..\..\Assets\Plugins\x86_64\$(TargetName).dll
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -177,12 +179,12 @@ copy $(TargetPath) ..\..\Assets\Plugins\x86\$(TargetName).dll
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <AdditionalDependencies>kernel32.lib;user32.lib;winmm.lib;mysofa.lib;zlibstat.lib;pthreadVC2.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../../../../Tools/libmysofa\bin\$(Platform)\$(Configuration)\;../../../../Tools/libmysofa\third-party\zlib-1.2.11\contrib\vstudio\vc14\x64\ZlibStatRelease;../../../../Tools/libmysofa\third-party\pthreads-win32\Pre-built.2\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;winmm.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>mkdir ..\..\Assets\Plugins\x86_64
+copy /y $(TargetPath) ..\..\Assets\Plugins\x86_64\$(TargetName).dll
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

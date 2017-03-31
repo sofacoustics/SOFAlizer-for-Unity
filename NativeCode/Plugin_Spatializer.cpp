@@ -2,10 +2,6 @@
 
 #include "AudioPluginUtil.h"
 
-#include "../../../Tools/libmysofa/src/hrtf/mysofa.h"
-
-
-
 extern float hrtfSrcData[];
 extern float reverbmixbuffer[];
 
@@ -58,23 +54,7 @@ namespace Spatializer
     public:
         HRTFData()
         {
-
-			int err;
-
-			struct MYSOFA_EASY *hrtf = (MYSOFA_EASY *)malloc(sizeof(struct MYSOFA_EASY));
-			//if (!hrtf) return 1234;
-
-			hrtf->lookup = NULL;
-			hrtf->neighborhood = NULL;
-
-			hrtf->hrtf = mysofa_load("D:/ISF/OwnCloud/Jenny/Tools/libmysofa/tests/sofa_api_mo_test/ARI_NH4_hrtf_M_dtf 256.sofa", &err);
-			if (!hrtf->hrtf) {
-				mysofa_close(hrtf);
-				//return err;
-			}
-			
-            //float* p = hrtfSrcData;
-			float* p = hrtf->hrtf->DataIR.values; // this is how we access the HRTF data stored in the SOFA file. Note that the format in that variable is not compatible with hrtfSrcData and needs to be adapted
+            float* p = hrtfSrcData;
             for (int c = 0; c < 2; c++)
             {
                 for (int e = 0; e < 14; e++)
@@ -101,10 +81,6 @@ namespace Spatializer
                     }
                 }
             }
-
-			// close the file
-			mysofa_close(hrtf);
-
         }
     };
 
@@ -248,8 +224,8 @@ namespace Spatializer
         float spatialblend = state->spatializerdata->spatialblend;
         float reverbmix = state->spatializerdata->reverbzonemix;
 
-        GetHRTF(0, data->ch[1].h, azimuth, elevation);
-        GetHRTF(1, data->ch[0].h, azimuth, elevation); 
+        GetHRTF(0, data->ch[0].h, azimuth, elevation);
+        GetHRTF(1, data->ch[1].h, azimuth, elevation);
 
         // From the FMOD documentation:
         //   A spread angle of 0 makes the stereo sound mono at the point of the 3D emitter.
@@ -262,7 +238,7 @@ namespace Spatializer
         float spreadmatrix[2] = { 2.0f - spread, spread };
 
         float* reverb = reverbmixbuffer;
-        for (unsigned int sampleOffset = 0; sampleOffset < length; sampleOffset += HRTFLEN)
+        for (int sampleOffset = 0; sampleOffset < length; sampleOffset += HRTFLEN)
         {
             for (int c = 0; c < 2; c++)
             {
