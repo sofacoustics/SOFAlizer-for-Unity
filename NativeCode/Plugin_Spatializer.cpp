@@ -54,6 +54,8 @@ namespace Spatializer
 
     public:
         CircleCoeffs hrtfChannel[2][14];
+		struct MYSOFA_EASY *myhrtf;
+		FILE * pConsole;
 
     public:
         HRTFData()
@@ -61,20 +63,50 @@ namespace Spatializer
 
 			int err;
 
-			struct MYSOFA_EASY *hrtf = (MYSOFA_EASY *)malloc(sizeof(struct MYSOFA_EASY));
+			myhrtf = (MYSOFA_EASY *)malloc(sizeof(struct MYSOFA_EASY));
 			//if (!hrtf) return 1234;
 
-			hrtf->lookup = NULL;
-			hrtf->neighborhood = NULL;
+			myhrtf->lookup = NULL;
+			myhrtf->neighborhood = NULL;
 
-			hrtf->hrtf = mysofa_load("D:/ISF/OwnCloud/Jenny/Tools/libmysofa/tests/sofa_api_mo_test/ARI_NH4_hrtf_M_dtf 256.sofa", &err);
-			if (!hrtf->hrtf) {
-				mysofa_close(hrtf);
-				//return err;
+			AllocConsole();
+			freopen_s(&pConsole, "CONOUT$", "wb", stdout);
+
+			char *filename = "../libmysofa/tests/sofa_api_mo_test/ARI_NH4_hrtf_M_dtf 256.sofa";
+
+			myhrtf->hrtf = mysofa_load(filename, &err);
+			if (!myhrtf->hrtf) {
+				fprintf(pConsole, "Can't load file %s", filename);
+				mysofa_close(myhrtf);
+				return;
 			}
 			
-            //float* p = hrtfSrcData;
-			float* p = hrtf->hrtf->DataIR.values; // this is how we access the HRTF data stored in the SOFA file. Note that the format in that variable is not compatible with hrtfSrcData and needs to be adapted
+
+			fprintf(pConsole, "File loaded: %s", filename);
+			fprintf(pConsole, "Number of HRTFs: %d\n", myhrtf->hrtf->M);
+			fprintf(pConsole, "HRTF length: %d\n", myhrtf->hrtf->N);
+
+
+			err = mysofa_check(myhrtf->hrtf);
+			if (err != MYSOFA_OK) {
+				fprintf(pConsole, "HRTF Check failed!");
+				mysofa_close(myhrtf);
+				return;
+			}
+
+			mysofa_tocartesian(myhrtf->hrtf);
+
+			myhrtf->lookup = mysofa_lookup_init(myhrtf->hrtf);
+			if (myhrtf->lookup == NULL) {
+				err = MYSOFA_INTERNAL_ERROR;
+				fprintf(pConsole, "HRTF Look-up init failed!");
+				mysofa_close(myhrtf);
+				return;
+			}
+			myhrtf->neighborhood = mysofa_neighborhood_init(myhrtf->hrtf, myhrtf->lookup);
+
+            float* p = hrtfSrcData;
+			//float* p = myhrtf->hrtf->DataIR.values; // this is how we access the HRTF data stored in the SOFA file. Note that the format in that variable is not compatible with hrtfSrcData and needs to be adapted
             for (int c = 0; c < 2; c++)
             {
                 for (int e = 0; e < 14; e++)
@@ -103,7 +135,7 @@ namespace Spatializer
             }
 
 			// close the file
-			mysofa_close(hrtf);
+			mysofa_close(myhrtf);
 
         }
     };
@@ -199,6 +231,8 @@ namespace Spatializer
 
     static void GetHRTF(int channel, UnityComplexNumber* h, float azimuth, float elevation)
     {
+		//int M = sharedData.myhrtf->hrtf->M;
+		//channel %= M;
         float e = FastClip(elevation * 0.1f + 4, 0, 12);
         float f = floorf(e);
         int index1 = (int)f;
@@ -211,6 +245,11 @@ namespace Spatializer
             index2 = 12;
         sharedData.hrtfChannel[channel][index1].GetHRTF(h, azimuth, 1.0f);
         sharedData.hrtfChannel[channel][index2].GetHRTF(h, azimuth, e - f);
+
+		fprintf(sharedData.pConsole, "direction: (%d,%d)\n", (int)azimuth,(int)elevation);
+		
+		//sharedData.hrtfChannel[channel][index2].GetHRTF(h, (float)M, e - f);
+
     }
 
     UNITY_AUDIODSP_RESULT UNITY_AUDIODSP_CALLBACK ProcessCallback(UnityAudioEffectState* state, float* inbuffer, float* outbuffer, unsigned int length, int inchannels, int outchannels)
