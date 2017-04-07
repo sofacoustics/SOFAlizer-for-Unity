@@ -54,8 +54,14 @@ namespace Spatializer
 
     public:
         CircleCoeffs hrtfChannel[2][14];
-		struct MYSOFA_EASY *myhrtf;
-		FILE * pConsole;
+		//MYSOFA_EASY *myeasy;
+		MYSOFA_HRTF *myhrir;		// stores the SOFA structure
+		MYSOFA_LOOKUP *mylookup;    // for the lookup
+		MYSOFA_NEIGHBORHOOD *myneighborhood;  // for the lookup
+		FILE *pConsole;		// for debugging, use fprintf(pConsole, "my string");
+		UnityComplexNumber *myhrtf;  // All HRTFs in frequency domain, number of elements = M * R * HRTFLEN * 2
+
+		
 
     public:
         HRTFData()
@@ -63,50 +69,67 @@ namespace Spatializer
 
 			int err;
 
-			myhrtf = (MYSOFA_EASY *)malloc(sizeof(struct MYSOFA_EASY));
+			//myeasy = (MYSOFA_EASY *)malloc(sizeof(struct MYSOFA_EASY));
 			//if (!hrtf) return 1234;
 
-			myhrtf->lookup = NULL;
-			myhrtf->neighborhood = NULL;
+			//myeasy->lookup = NULL;
+			//myeasy->neighborhood = NULL;
 
 			AllocConsole();
 			freopen_s(&pConsole, "CONOUT$", "wb", stdout);
 
 			char *filename = "../libmysofa/tests/sofa_api_mo_test/ARI_NH4_hrtf_M_dtf 256.sofa";
 
-			myhrtf->hrtf = mysofa_load(filename, &err);
-			if (!myhrtf->hrtf) {
+			myhrir = mysofa_load(filename, &err);
+			if (!myhrir) {
 				fprintf(pConsole, "Can't load file %s", filename);
-				mysofa_close(myhrtf);
+				//mysofa_close(myhrir);
 				return;
 			}
 			
 
 			fprintf(pConsole, "File loaded: %s", filename);
-			fprintf(pConsole, "Number of HRTFs: %d\n", myhrtf->hrtf->M);
-			fprintf(pConsole, "HRTF length: %d\n", myhrtf->hrtf->N);
+			fprintf(pConsole, "Number of HRTFs: %d\n", myhrir->M);
+			fprintf(pConsole, "HRTF length: %d\n", myhrir->N);
 
 
-			err = mysofa_check(myhrtf->hrtf);
+			err = mysofa_check(myhrir);
 			if (err != MYSOFA_OK) {
 				fprintf(pConsole, "HRTF Check failed!");
-				mysofa_close(myhrtf);
+				//mysofa_close(myhrir);
 				return;
 			}
 
-			mysofa_tocartesian(myhrtf->hrtf);
+			mysofa_tocartesian(myhrir);
 
-			myhrtf->lookup = mysofa_lookup_init(myhrtf->hrtf);
-			if (myhrtf->lookup == NULL) {
+			mylookup = mysofa_lookup_init(myhrir);
+			if (mylookup == NULL) {
 				err = MYSOFA_INTERNAL_ERROR;
 				fprintf(pConsole, "HRTF Look-up init failed!");
-				mysofa_close(myhrtf);
+				//mysofa_close(myhrir);
 				return;
 			}
-			myhrtf->neighborhood = mysofa_neighborhood_init(myhrtf->hrtf, myhrtf->lookup);
+			myneighborhood = mysofa_neighborhood_init(myhrir, mylookup);
+
+			myhrtf = (UnityComplexNumber *)malloc(sizeof(UnityComplexNumber) * myhrir->M * myhrir->R * 2 * HRTFLEN);
+			UnityComplexNumber h[HRTFLEN * 2];
+			float *hrir = myhrir->DataIR.values;
+			UnityComplexNumber *hrtf = myhrtf;
+			for (int a = 0; a < myhrir->M * myhrir->R; a++)
+			{
+					// copy from source array
+				memset(h, 0, sizeof(h));
+				for (int n = 0; n < myhrir->N; n++)
+					h[n + HRTFLEN].re = *(hrir++);
+					// FFT
+				FFT::Forward(h, HRTFLEN * 2, false);
+					// Copy to destination array
+				for (int n = 0; n < HRTFLEN * 2; n++)
+					*(hrtf++) = h[n];
+			}
 
             float* p = hrtfSrcData;
-			//float* p = myhrtf->hrtf->DataIR.values; // this is how we access the HRTF data stored in the SOFA file. Note that the format in that variable is not compatible with hrtfSrcData and needs to be adapted
+			//float* p = myhrir->hrtf->DataIR.values; // this is how we access the HRTF data stored in the SOFA file. Note that the format in that variable is not compatible with hrtfSrcData and needs to be adapted
             for (int c = 0; c < 2; c++)
             {
                 for (int e = 0; e < 14; e++)
@@ -135,7 +158,7 @@ namespace Spatializer
             }
 
 			// close the file
-			mysofa_close(myhrtf);
+			//mysofa_free(myhrir);
 
         }
     };
@@ -231,8 +254,6 @@ namespace Spatializer
 
     static void GetHRTF(int channel, UnityComplexNumber* h, float azimuth, float elevation)
     {
-		//int M = sharedData.myhrtf->hrtf->M;
-		//channel %= M;
         float e = FastClip(elevation * 0.1f + 4, 0, 12);
         float f = floorf(e);
         int index1 = (int)f;
@@ -247,6 +268,7 @@ namespace Spatializer
         sharedData.hrtfChannel[channel][index2].GetHRTF(h, azimuth, e - f);
 
 		fprintf(sharedData.pConsole, "direction: (%d,%d)\n", (int)azimuth,(int)elevation);
+		fprintf(sharedData.pConsole, "test: (%d)\n", (int)sharedData.myhrir->DataIR.elements);
 		
 		//sharedData.hrtfChannel[channel][index2].GetHRTF(h, (float)M, e - f);
 
