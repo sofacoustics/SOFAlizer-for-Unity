@@ -31,7 +31,7 @@ namespace Spatializer
             float* hrtf;
             float* angles;
 
-            void GetHRTF(UnityComplexNumber* h, float angle, float mix)
+           /* void MixHRTF(UnityComplexNumber* h, float angle, float mix)
             {
                 int index1 = 0;
                 while (index1 < numangles && angles[index1] < angle)
@@ -49,12 +49,11 @@ namespace Spatializer
                     hrtf1 += 2;
                     hrtf2 += 2;
                 }
-            }
+            }*/
         };
 
     public:
         CircleCoeffs hrtfChannel[2][14];
-		//MYSOFA_EASY *myeasy;
 		MYSOFA_HRTF *myhrir;		// stores the SOFA structure
 		MYSOFA_LOOKUP *mylookup;    // for the lookup
 		MYSOFA_NEIGHBORHOOD *myneighborhood;  // for the lookup
@@ -67,54 +66,48 @@ namespace Spatializer
         HRTFData()
         {
 
-			int err;
+			// Use this SOFA file. Currently, N<512 supported only
+			//char *filename = "../libmysofa/tests/sofa_api_mo_test/ARI_NH4_hrtf_M_dtf 256.sofa";
+			char *filename = "hrtfs.sofa";
 
-			//myeasy = (MYSOFA_EASY *)malloc(sizeof(struct MYSOFA_EASY));
-			//if (!hrtf) return 1234;
-
-			//myeasy->lookup = NULL;
-			//myeasy->neighborhood = NULL;
-
+			// Allocate a console for debugging. Use fprintf(pConsole, string); for printinf
 			AllocConsole();
 			freopen_s(&pConsole, "CONOUT$", "wb", stdout);
-
-			char *filename = "../libmysofa/tests/sofa_api_mo_test/ARI_NH4_hrtf_M_dtf 256.sofa";
-
+			
+			// Open the SOFA file
+			int err;
 			myhrir = mysofa_load(filename, &err);
 			if (!myhrir) {
 				fprintf(pConsole, "Can't load file %s", filename);
-				//mysofa_close(myhrir);
 				return;
-			}
-			
-
-			fprintf(pConsole, "File loaded: %s", filename);
+			}			
+			fprintf(pConsole, "Version of 5 May 2017\n");
+			fprintf(pConsole, "File loaded: %s\n", filename);
 			fprintf(pConsole, "Number of HRTFs: %d\n", myhrir->M);
 			fprintf(pConsole, "HRTF length: %d\n", myhrir->N);
 
-
+			// Check the loaded structure
 			err = mysofa_check(myhrir);
 			if (err != MYSOFA_OK) {
 				fprintf(pConsole, "HRTF Check failed!");
-				//mysofa_close(myhrir);
 				return;
 			}
 
+			// Convert to cartesian, initialize the look up
 			mysofa_tocartesian(myhrir);
-
 			mylookup = mysofa_lookup_init(myhrir);
 			if (mylookup == NULL) {
 				err = MYSOFA_INTERNAL_ERROR;
 				fprintf(pConsole, "HRTF Look-up init failed!");
-				//mysofa_close(myhrir);
 				return;
 			}
 			myneighborhood = mysofa_neighborhood_init(myhrir, mylookup);
 
-			myhrtf = (UnityComplexNumber *)malloc(sizeof(UnityComplexNumber) * myhrir->M * myhrir->R * 2 * HRTFLEN);
-			UnityComplexNumber h[HRTFLEN * 2];
-			float *hrir = myhrir->DataIR.values;
-			UnityComplexNumber *hrtf = myhrtf;
+			// Transform the HRIRs to complex-valued spectral filters and copy to the HRTF array called myhrtf
+			myhrtf = (UnityComplexNumber *)malloc(sizeof(UnityComplexNumber) * myhrir->M * myhrir->R * 2 * HRTFLEN);			
+			UnityComplexNumber h[HRTFLEN * 2]; // for temporary impulse response and spectrum
+			float *hrir = myhrir->DataIR.values; // temporary pointer to the source array
+			UnityComplexNumber *hrtf = myhrtf; // temporary pointer to the destination array
 			for (int a = 0; a < myhrir->M * myhrir->R; a++)
 			{
 					// copy from source array
@@ -128,8 +121,7 @@ namespace Spatializer
 					*(hrtf++) = h[n];
 			}
 
-            float* p = hrtfSrcData;
-			//float* p = myhrir->hrtf->DataIR.values; // this is how we access the HRTF data stored in the SOFA file. Note that the format in that variable is not compatible with hrtfSrcData and needs to be adapted
+            /*float* p = hrtfSrcData;
             for (int c = 0; c < 2; c++)
             {
                 for (int e = 0; e < 14; e++)
@@ -155,10 +147,7 @@ namespace Spatializer
                         }
                     }
                 }
-            }
-
-			// close the file
-			//mysofa_free(myhrir);
+            }*/
 
         }
     };
@@ -252,27 +241,25 @@ namespace Spatializer
         return UNITY_AUDIODSP_OK;
     }
 
-    static void GetHRTF(int channel, UnityComplexNumber* h, float azimuth, float elevation)
+    /*static void GetHRTF(int channel, UnityComplexNumber* h, float azimuth, float elevation)
     {
-        float e = FastClip(elevation * 0.1f + 4, 0, 12);
-        float f = floorf(e);
+		  // calculate the index to the elevation group (=array of HRTFs for a given elevation)
+        float e = FastClip(elevation * 0.1f + 4, 0, 12); // index to elevation with remainder
+        float f = floorf(e);  // index to elevation without remainder
         int index1 = (int)f;
         if (index1 < 0)
             index1 = 0;
         else if (index1 > 12)
-            index1 = 12;
+            index1 = 12;	  // index1: index to the full HRTF 
         int index2 = index1 + 1;
         if (index2 > 12)
-            index2 = 12;
-        sharedData.hrtfChannel[channel][index1].GetHRTF(h, azimuth, 1.0f);
-        sharedData.hrtfChannel[channel][index2].GetHRTF(h, azimuth, e - f);
+            index2 = 12;      // index 2: index to the partial addition because of the remainder
+		  // copy the corresponding full HRTF to h
+        sharedData.hrtfChannel[channel][index1].MixHRTF(h, azimuth, 1.0f);
+		  // and mix with the remainder HRTF
+        sharedData.hrtfChannel[channel][index2].MixHRTF(h, azimuth, e - f);	
 
-		fprintf(sharedData.pConsole, "direction: (%d,%d)\n", (int)azimuth,(int)elevation);
-		fprintf(sharedData.pConsole, "test: (%d)\n", (int)sharedData.myhrir->DataIR.elements);
-		
-		//sharedData.hrtfChannel[channel][index2].GetHRTF(h, (float)M, e - f);
-
-    }
+    }*/
 
     UNITY_AUDIODSP_RESULT UNITY_AUDIODSP_CALLBACK ProcessCallback(UnityAudioEffectState* state, float* inbuffer, float* outbuffer, unsigned int length, int inchannels, int outchannels)
     {
@@ -285,6 +272,7 @@ namespace Spatializer
         }
 
         EffectData* data = state->GetEffectData<EffectData>();
+		// in data->ch[0|1].h is space for the HRIRs
 
         static const float kRad2Deg = 180.0f / kPI;
 
@@ -300,17 +288,40 @@ namespace Spatializer
         float dir_y = m[1] * px + m[5] * py + m[9] * pz + m[13];
         float dir_z = m[2] * px + m[6] * py + m[10] * pz + m[14];
 
+		// Calculate the source direction in spherical coordinates
         float azimuth = (fabsf(dir_z) < 0.001f) ? 0.0f : atan2f(dir_x, dir_z);
         if (azimuth < 0.0f)
             azimuth += 2.0f * kPI;
         azimuth = FastClip(azimuth * kRad2Deg, 0.0f, 360.0f);
-
         float elevation = atan2f(dir_y, sqrtf(dir_x * dir_x + dir_z * dir_z) + 0.001f) * kRad2Deg;
-        float spatialblend = state->spatializerdata->spatialblend;
-        float reverbmix = state->spatializerdata->reverbzonemix;
+		fprintf(sharedData.pConsole, "Required direction: (%d,%d); ", (int)azimuth, (int)elevation);
 
-        GetHRTF(0, data->ch[1].h, azimuth, elevation);
-        GetHRTF(1, data->ch[0].h, azimuth, elevation); 
+        //GetHRTF(0, data->ch[1].h, azimuth, elevation); // deprecated 
+        //GetHRTF(1, data->ch[0].h, azimuth, elevation); // deprecated 
+
+		// Calculate the source direction in cartesian coordinates for the look-up
+		float t[3];
+		t[0] = (float)azimuth; // azimuth in deg
+		t[1] = (float)elevation; // elevation in deg
+		t[2] = 1.2; // radius in m
+		mysofa_s2c(t);
+		
+		// Get the index to the nearest HRTF direction
+		int nearest = mysofa_lookup(sharedData.mylookup, t);
+		fprintf(sharedData.pConsole, "  Nearest position found at index: %d\n", nearest);
+		
+		// Create a pointer to the left-ear HRTF (the right-ear HRTF is right behind the left-ear)
+		UnityComplexNumber *IRL;  
+		IRL = sharedData.myhrtf + nearest * (2*HRTFLEN) * 2;             // nearest * N * R
+
+		// Copy the HRTFs for both ears to the data array
+		for (int chidx=1; chidx>=0; chidx--)		// copy left-ear to ch=1 and right-ear to ch=0
+			for (int n = 0; n < 2*HRTFLEN; n++)
+			{
+				data->ch[chidx].h[n].re = IRL->re;
+				data->ch[chidx].h[n].im = IRL->im;
+				IRL++;
+			}
 
         // From the FMOD documentation:
         //   A spread angle of 0 makes the stereo sound mono at the point of the 3D emitter.
@@ -322,7 +333,10 @@ namespace Spatializer
         float spread = cosf(state->spatializerdata->spread * kPI / 360.0f);
         float spreadmatrix[2] = { 2.0f - spread, spread };
 
-        float* reverb = reverbmixbuffer;
+		float spatialblend = state->spatializerdata->spatialblend;
+		float reverbmix = state->spatializerdata->reverbzonemix;
+		
+		float* reverb = reverbmixbuffer;
         for (unsigned int sampleOffset = 0; sampleOffset < length; sampleOffset += HRTFLEN)
         {
             for (int c = 0; c < 2; c++)
