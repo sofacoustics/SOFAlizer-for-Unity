@@ -16,6 +16,7 @@ namespace Spatializer
         P_AUDIOSRCATTN,
         P_FIXEDVOLUME,
         P_CUSTOMFALLOFF,
+		P_SOFASELECTOR,
         P_NUM
     };
 
@@ -65,7 +66,6 @@ namespace Spatializer
     public:
         HRTFData()
         {
-
 			// Use this SOFA file. Currently, N<512 supported only
 			//char *filename = "../libmysofa/tests/sofa_api_mo_test/ARI_NH4_hrtf_M_dtf 256.sofa";
 			char *filename = "hrtfs.sofa";
@@ -183,6 +183,7 @@ namespace Spatializer
         RegisterParameter(definition, "AudioSrc Attn", "", 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, P_AUDIOSRCATTN, "AudioSource distance attenuation");
         RegisterParameter(definition, "Fixed Volume", "", 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, P_FIXEDVOLUME, "Fixed volume amount");
         RegisterParameter(definition, "Custom Falloff", "", 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, P_CUSTOMFALLOFF, "Custom volume falloff amount (logarithmic)");
+		RegisterParameter(definition, "SOFA Selector", "", 0.0f, 2.0f, 0.0f, 1.0f, 1.0f, P_SOFASELECTOR, "HRTF Selector");
         definition.flags |= UnityAudioEffectDefinitionFlags_IsSpatializer;
         return numparams;
     }
