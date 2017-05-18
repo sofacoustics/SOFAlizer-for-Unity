@@ -60,15 +60,16 @@ namespace Spatializer
 		MYSOFA_NEIGHBORHOOD *myneighborhood;  // for the lookup
 		FILE *pConsole;		// for debugging, use fprintf(pConsole, "my string");
 		UnityComplexNumber *myhrtf;  // All HRTFs in frequency domain, number of elements = M * R * HRTFLEN * 2
-
 		
 
     public:
         HRTFData()
         {
+			
 			// Use this SOFA file. Currently, N<512 supported only
 			//char *filename = "../libmysofa/tests/sofa_api_mo_test/ARI_NH4_hrtf_M_dtf 256.sofa";
 			char *filename = "hrtfs.sofa";
+			
 
 			// Allocate a console for debugging. Use fprintf(pConsole, string); for printinf
 			AllocConsole();
@@ -85,7 +86,7 @@ namespace Spatializer
 			fprintf(pConsole, "File loaded: %s\n", filename);
 			fprintf(pConsole, "Number of HRTFs: %d\n", myhrir->M);
 			fprintf(pConsole, "HRTF length: %d\n", myhrir->N);
-
+			
 			// Check the loaded structure
 			err = mysofa_check(myhrir);
 			if (err != MYSOFA_OK) {
@@ -274,6 +275,9 @@ namespace Spatializer
 
         EffectData* data = state->GetEffectData<EffectData>();
 		// in data->ch[0|1].h is space for the HRIRs
+
+		int Selper = data->p[P_SOFASELECTOR];
+		fprintf(sharedData.pConsole, "SOFA File: %d; ", (int)Selper);
 
         static const float kRad2Deg = 180.0f / kPI;
 
