@@ -182,10 +182,10 @@ copy $(TargetPath) ..\..\Assets\Plugins\x86\$(TargetName).dll
       <AdditionalDependencies>winmm.lib;../../../libmysofa\bin\$(Platform)\$(Configuration)\mysofa.lib;../../../libmysofa\third-party\zlib-1.2.11\contrib\vstudio\vc14\x64\ZlibStatRelease\zlibstat.lib;../../../libmysofa\third-party\pthreads-win32\Pre-built.2\lib\x64\pthreadVC2.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
-      <Command>mkdir ..\..\Assets\Plugins\x86_64 
-copy $(TargetPath) ..\..\Assets\Plugins\x86_64\$(TargetName).dll</Command>
+      <Command>copy $(TargetPath) ..\..\Assets\Plugins\x86_64\$(TargetName).dll</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

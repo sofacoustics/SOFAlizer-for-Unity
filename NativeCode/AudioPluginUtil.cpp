@@ -6,7 +6,7 @@
 char* strnew(const char* src)
 {
     char* newstr = new char[strlen(src) + 1];
-    strcpy(newstr, src);
+    strcpy_s(newstr, strlen(src) + 1, src);
     return newstr;
 }
 
@@ -15,7 +15,7 @@ char* tmpstr(int index, const char* fmtstr, ...)
     static char buf[4][1024];
     va_list args;
     va_start(args, fmtstr);
-    vsprintf(buf[index], fmtstr, args);
+    vsprintf_s(buf[index], 1024, fmtstr, args);
     va_end(args);
     return buf[index];
 }
@@ -26,7 +26,7 @@ template<typename T>
 static void FFTProcess(UnityComplexNumber* data, int numsamples, bool forward)
 {
 	unsigned int count = 1, numbits = 0;
-	while (count < numsamples)
+	while (count < (unsigned int)numsamples)
 	{
 		count += count;
 		++numbits;
@@ -37,7 +37,7 @@ static void FFTProcess(UnityComplexNumber* data, int numsamples, bool forward)
 	if (tbl == NULL)
 	{
 		tbl = new unsigned int [numsamples];
-		for (unsigned int n = 0; n < numsamples; n++)
+		for (unsigned int n = 0; n < (unsigned int)numsamples; n++)
 		{
 			unsigned int j = 1, k = 0, m = numsamples >> 1;
 			while (m > 0)
@@ -50,7 +50,7 @@ static void FFTProcess(UnityComplexNumber* data, int numsamples, bool forward)
 			tbl[n] = k;
 		}
 #if ENABLE_TESTS
-		for (unsigned int n = 0; n < numsamples; n++)
+		for (unsigned int n = 0; n < (unsigned int)numsamples; n++)
 		{
 			assert (tbl[tbl[n]] == n);
 		}
@@ -58,7 +58,7 @@ static void FFTProcess(UnityComplexNumber* data, int numsamples, bool forward)
 		reversetable[numbits] = tbl;
 	}
 	
-	for (unsigned int i = 0; i < numsamples; i++)
+	for (unsigned int i = 0; i < (unsigned int)numsamples; i++)
 	{
 		unsigned int j = tbl[i];
 		if (i < j)

@@ -127,7 +127,7 @@ namespace Vocoder
         data = &g_EffectData.data;
 #endif
 
-        float gain = powf(10.0f, 0.05f * data->p[P_GAIN] + 2.5);
+        float gain = powf(10.0f, 0.05f * data->p[P_GAIN] + 2.5f);
         float maxfreq = 0.25f * state->samplerate;
         float sampletime = 1.0f / (float)state->samplerate;
         float w0 = 0.5f * kPI * sampletime;

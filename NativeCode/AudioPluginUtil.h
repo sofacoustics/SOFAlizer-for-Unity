@@ -71,15 +71,15 @@ public:
 	template<typename T1, typename T2, typename T3>
     inline static void Add(const UnityComplexNumberT<T1>& a, const UnityComplexNumberT<T2>& b, UnityComplexNumberT<T3>& result)
     {
-        result.re = a.re + b.re;
-        result.im = a.im + b.im;
+        result.re = (T3)(a.re + b.re);
+        result.im = (T3)(a.im + b.im);
     }
 
 	template<typename T1, typename T2, typename T3>
     inline static void Sub(const UnityComplexNumberT<T1>& a, const UnityComplexNumberT<T2>& b, UnityComplexNumberT<T3>& result)
     {
-        result.re = a.re - b.re;
-        result.im = a.im - b.im;
+        result.re = (T3)(a.re - b.re);
+        result.im = (T3)(a.im - b.im);
     }
 
 	template<typename T1, typename T2, typename T3>

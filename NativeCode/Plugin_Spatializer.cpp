@@ -271,7 +271,7 @@ namespace Spatializer
 			t[1] = sharedData.myhrir[Selper]->SourcePosition.values[1];
 			t[2] = sharedData.myhrir[Selper]->SourcePosition.values[2];
 			mysofa_c2s(t);
-			fprintf(sharedData.pConsole, " (%f5.1,%f5.1)\n", t[0], t[1]);
+			fprintf(sharedData.pConsole, " (%f0.1,%f0.1)\n", t[0], t[1]);
 
 			// Create a pointer to the left-ear HRTF (the right-ear HRTF is right behind the left-ear)
 			UnityComplexNumber *IRL;
