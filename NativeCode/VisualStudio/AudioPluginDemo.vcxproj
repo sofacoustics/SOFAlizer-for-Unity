@@ -189,7 +189,6 @@ copy $(TargetPath) ..\..\Assets\Plugins\x86_64\$(TargetName).dll</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\AudioPluginUtil.cpp" />
-    <ClCompile Include="..\hrtftable.cpp" />
     <ClCompile Include="..\Plugin_ConvolutionReverb.cpp" />
     <ClCompile Include="..\Plugin_CorrelationMeter.cpp" />
     <ClCompile Include="..\Plugin_Equalizer.cpp" />

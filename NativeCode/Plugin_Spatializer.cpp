@@ -5,8 +5,6 @@
 #include "mysofa.h"
 
 
-
-extern float hrtfSrcData[];
 extern float reverbmixbuffer[];
 
 namespace Spatializer
@@ -32,29 +30,9 @@ namespace Spatializer
             float* hrtf;
             float* angles;
 
-           /* void MixHRTF(UnityComplexNumber* h, float angle, float mix)
-            {
-                int index1 = 0;
-                while (index1 < numangles && angles[index1] < angle)
-                    index1++;
-                if (index1 > 0)
-                    index1--;
-                int index2 = (index1 + 1) % numangles;
-                float* hrtf1 = hrtf + HRTFLEN * 4 * index1;
-                float* hrtf2 = hrtf + HRTFLEN * 4 * index2;
-                float f = (angle - angles[index1]) / (angles[index2] - angles[index1]);
-                for (int n = 0; n < HRTFLEN * 2; n++)
-                {
-                    h[n].re += (hrtf1[0] + (hrtf2[0] - hrtf1[0]) * f - h[n].re) * mix;
-                    h[n].im += (hrtf1[1] + (hrtf2[1] - hrtf1[1]) * f - h[n].im) * mix;
-                    hrtf1 += 2;
-                    hrtf2 += 2;
-                }
-            }*/
         };
 
     public:
-        CircleCoeffs hrtfChannel[2][14];
 		MYSOFA_HRTF *myhrir;		// stores the SOFA structure
 		MYSOFA_LOOKUP *mylookup;    // for the lookup
 		MYSOFA_NEIGHBORHOOD *myneighborhood;  // for the lookup
@@ -67,22 +45,21 @@ namespace Spatializer
         {
 			
 			// Use this SOFA file. Currently, N<512 supported only
-			//char *filename = "../libmysofa/tests/sofa_api_mo_test/ARI_NH4_hrtf_M_dtf 256.sofa";
-			char *filename = "hrtfs.sofa";
-			
+			char *filename = "hrtf1.sofa";
+			int err;
 
 			// Allocate a console for debugging. Use fprintf(pConsole, string); for printinf
 			AllocConsole();
-			freopen_s(&pConsole, "CONOUT$", "wb", stdout);
-			
+			freopen_s(&pConsole, "CONOUT$", "wb", stdout);					
+
 			// Open the SOFA file
-			int err;
+			
 			myhrir = mysofa_load(filename, &err);
 			if (!myhrir) {
 				fprintf(pConsole, "Can't load file %s", filename);
 				return;
 			}			
-			fprintf(pConsole, "Version of 5 May 2017\n");
+			fprintf(pConsole, "Version of 20 May 2017\n");
 			fprintf(pConsole, "File loaded: %s\n", filename);
 			fprintf(pConsole, "Number of HRTFs: %d\n", myhrir->M);
 			fprintf(pConsole, "HRTF length: %d\n", myhrir->N);
@@ -109,11 +86,11 @@ namespace Spatializer
 			UnityComplexNumber h[HRTFLEN * 2]; // for temporary impulse response and spectrum
 			float *hrir = myhrir->DataIR.values; // temporary pointer to the source array
 			UnityComplexNumber *hrtf = myhrtf; // temporary pointer to the destination array
-			for (int a = 0; a < myhrir->M * myhrir->R; a++)
+			for (unsigned int a = 0; a < myhrir->M * myhrir->R; a++)
 			{
 					// copy from source array
 				memset(h, 0, sizeof(h));
-				for (int n = 0; n < myhrir->N; n++)
+				for (unsigned int n = 0; n < myhrir->N; n++)
 					h[n + HRTFLEN].re = *(hrir++);
 					// FFT
 				FFT::Forward(h, HRTFLEN * 2, false);
@@ -122,33 +99,6 @@ namespace Spatializer
 					*(hrtf++) = h[n];
 			}
 
-            /*float* p = hrtfSrcData;
-            for (int c = 0; c < 2; c++)
-            {
-                for (int e = 0; e < 14; e++)
-                {
-                    CircleCoeffs& coeffs = hrtfChannel[c][e];
-                    coeffs.numangles = (int)(*p++);
-                    coeffs.angles = p;
-                    p += coeffs.numangles;
-                    coeffs.hrtf = new float[coeffs.numangles * HRTFLEN * 4];
-                    float* dst = coeffs.hrtf;
-                    UnityComplexNumber h[HRTFLEN * 2];
-                    for (int a = 0; a < coeffs.numangles; a++)
-                    {
-                        memset(h, 0, sizeof(h));
-                        for (int n = 0; n < HRTFLEN; n++)
-                            h[n + HRTFLEN].re = p[n];
-                        p += HRTFLEN;
-                        FFT::Forward(h, HRTFLEN * 2, false);
-                        for (int n = 0; n < HRTFLEN * 2; n++)
-                        {
-                            *dst++ = h[n].re;
-                            *dst++ = h[n].im;
-                        }
-                    }
-                }
-            }*/
 
         }
     };
@@ -243,25 +193,6 @@ namespace Spatializer
         return UNITY_AUDIODSP_OK;
     }
 
-    /*static void GetHRTF(int channel, UnityComplexNumber* h, float azimuth, float elevation)
-    {
-		  // calculate the index to the elevation group (=array of HRTFs for a given elevation)
-        float e = FastClip(elevation * 0.1f + 4, 0, 12); // index to elevation with remainder
-        float f = floorf(e);  // index to elevation without remainder
-        int index1 = (int)f;
-        if (index1 < 0)
-            index1 = 0;
-        else if (index1 > 12)
-            index1 = 12;	  // index1: index to the full HRTF 
-        int index2 = index1 + 1;
-        if (index2 > 12)
-            index2 = 12;      // index 2: index to the partial addition because of the remainder
-		  // copy the corresponding full HRTF to h
-        sharedData.hrtfChannel[channel][index1].MixHRTF(h, azimuth, 1.0f);
-		  // and mix with the remainder HRTF
-        sharedData.hrtfChannel[channel][index2].MixHRTF(h, azimuth, e - f);	
-
-    }*/
 
     UNITY_AUDIODSP_RESULT UNITY_AUDIODSP_CALLBACK ProcessCallback(UnityAudioEffectState* state, float* inbuffer, float* outbuffer, unsigned int length, int inchannels, int outchannels)
     {
@@ -276,7 +207,7 @@ namespace Spatializer
         EffectData* data = state->GetEffectData<EffectData>();
 		// in data->ch[0|1].h is space for the HRIRs
 
-		int Selper = data->p[P_SOFASELECTOR];
+		int Selper = (int)(data->p[P_SOFASELECTOR]);
 		fprintf(sharedData.pConsole, "SOFA File: %d; ", (int)Selper);
 
         static const float kRad2Deg = 180.0f / kPI;
@@ -300,9 +231,6 @@ namespace Spatializer
         azimuth = FastClip(azimuth * kRad2Deg, 0.0f, 360.0f);
         float elevation = atan2f(dir_y, sqrtf(dir_x * dir_x + dir_z * dir_z) + 0.001f) * kRad2Deg;
 		fprintf(sharedData.pConsole, "Required direction: (%d,%d); ", (int)azimuth, (int)elevation);
-
-        //GetHRTF(0, data->ch[1].h, azimuth, elevation); // deprecated 
-        //GetHRTF(1, data->ch[0].h, azimuth, elevation); // deprecated 
 
 		// Calculate the source direction in cartesian coordinates for the look-up
 		float t[3];
