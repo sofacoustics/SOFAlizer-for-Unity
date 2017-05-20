@@ -167,7 +167,7 @@ copy $(TargetPath) ..\..\Assets\Plugins\x86\$(TargetName).dll
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
       <FloatingPointModel>Fast</FloatingPointModel>
       <ExceptionHandling>false</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -179,8 +179,9 @@ copy $(TargetPath) ..\..\Assets\Plugins\x86\$(TargetName).dll
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <AdditionalDependencies>kernel32.lib;user32.lib;winmm.lib;mysofa.lib;zlibstat.lib;pthreadVC2.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../../../libmysofa\bin\$(Platform)\$(Configuration)\;../../../libmysofa\third-party\zlib-1.2.11\contrib\vstudio\vc14\x64\ZlibStatRelease;../../../libmysofa\third-party\pthreads-win32\Pre-built.2\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>winmm.lib;../../../libmysofa\bin\$(Platform)\$(Configuration)\mysofa.lib;../../../libmysofa\third-party\zlib-1.2.11\contrib\vstudio\vc14\x64\ZlibStatRelease\zlibstat.lib;../../../libmysofa\third-party\pthreads-win32\Pre-built.2\lib\x64\pthreadVC2.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>mkdir ..\..\Assets\Plugins\x86_64 

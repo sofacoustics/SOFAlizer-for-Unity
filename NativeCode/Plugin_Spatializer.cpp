@@ -19,89 +19,100 @@ namespace Spatializer
     };
 
     const int HRTFLEN = 512;
+	const int MAX_SOFAS = 10;
 
-    const float GAINCORRECTION = 2.0f;
+	const float GAINCORRECTION = 2.0f;
 
-    class HRTFData
-    {
-        struct CircleCoeffs
-        {
-            int numangles;
-            float* hrtf;
-            float* angles;
+	class HRTFData
+	{
+		struct CircleCoeffs
+		{
+			int numangles;
+			float* hrtf;
+			float* angles;
 
-        };
+		};
 
-    public:
-		MYSOFA_HRTF *myhrir;		// stores the SOFA structure
-		MYSOFA_LOOKUP *mylookup;    // for the lookup
-		MYSOFA_NEIGHBORHOOD *myneighborhood;  // for the lookup
+	public:
+		MYSOFA_HRTF *myhrir[MAX_SOFAS];		// stores the SOFA structure
+		MYSOFA_LOOKUP *mylookup[MAX_SOFAS];    // for the lookup
+		MYSOFA_NEIGHBORHOOD *myneighborhood[MAX_SOFAS];  // for the lookup
 		FILE *pConsole;		// for debugging, use fprintf(pConsole, "my string");
-		UnityComplexNumber *myhrtf;  // All HRTFs in frequency domain, number of elements = M * R * HRTFLEN * 2
-		
+		UnityComplexNumber *myhrtf[MAX_SOFAS];  // All HRTFs in frequency domain, number of elements = M * R * HRTFLEN * 2
+		unsigned int mysofas[MAX_SOFAS]; // flag 
 
-    public:
-        HRTFData()
-        {
-			
-			// Use this SOFA file. Currently, N<512 supported only
-			char *filename = "hrtf1.sofa";
+
+	public:
+		HRTFData()
+		{
+			char filename[50];
 			int err;
 
-			// Allocate a console for debugging. Use fprintf(pConsole, string); for printinf
+				// Allocate a console for debugging. Use fprintf(pConsole, string); for printinf
 			AllocConsole();
-			freopen_s(&pConsole, "CONOUT$", "wb", stdout);					
+			freopen_s(&pConsole, "CONOUT$", "wb", stdout);
+			fprintf(pConsole, "SOFA Spatializer: Version of 20 May 2017\n");
 
-			// Open the SOFA file
-			
-			myhrir = mysofa_load(filename, &err);
-			if (!myhrir) {
-				fprintf(pConsole, "Can't load file %s", filename);
-				return;
-			}			
-			fprintf(pConsole, "Version of 20 May 2017\n");
-			fprintf(pConsole, "File loaded: %s\n", filename);
-			fprintf(pConsole, "Number of HRTFs: %d\n", myhrir->M);
-			fprintf(pConsole, "HRTF length: %d\n", myhrir->N);
-			
-			// Check the loaded structure
-			err = mysofa_check(myhrir);
-			if (err != MYSOFA_OK) {
-				fprintf(pConsole, "HRTF Check failed!");
-				return;
-			}
-
-			// Convert to cartesian, initialize the look up
-			mysofa_tocartesian(myhrir);
-			mylookup = mysofa_lookup_init(myhrir);
-			if (mylookup == NULL) {
-				err = MYSOFA_INTERNAL_ERROR;
-				fprintf(pConsole, "HRTF Look-up init failed!");
-				return;
-			}
-			myneighborhood = mysofa_neighborhood_init(myhrir, mylookup);
-
-			// Transform the HRIRs to complex-valued spectral filters and copy to the HRTF array called myhrtf
-			myhrtf = (UnityComplexNumber *)malloc(sizeof(UnityComplexNumber) * myhrir->M * myhrir->R * 2 * HRTFLEN);			
-			UnityComplexNumber h[HRTFLEN * 2]; // for temporary impulse response and spectrum
-			float *hrir = myhrir->DataIR.values; // temporary pointer to the source array
-			UnityComplexNumber *hrtf = myhrtf; // temporary pointer to the destination array
-			for (unsigned int a = 0; a < myhrir->M * myhrir->R; a++)
+				// Iterate through the SOFA files
+			for (unsigned int i = 0; i < MAX_SOFAS; i++)
 			{
-					// copy from source array
-				memset(h, 0, sizeof(h));
-				for (unsigned int n = 0; n < myhrir->N; n++)
-					h[n + HRTFLEN].re = *(hrir++);
-					// FFT
-				FFT::Forward(h, HRTFLEN * 2, false);
-					// Copy to destination array
-				for (int n = 0; n < HRTFLEN * 2; n++)
-					*(hrtf++) = h[n];
-			}
+					// first, assume this file as not loaded and not usable
+				mysofas[i] = 0; 
+					// Open the SOFA file
+				sprintf_s(filename, sizeof(filename), "hrtf%u.sofa", i);
+				myhrir[i] = mysofa_load(filename, &err);
+				if (myhrir[i])
+				{
+					err = mysofa_check(myhrir[i]); 	// Check the loaded structure
+					if (err == MYSOFA_OK)
+					{
+						fprintf(pConsole, "%s: Loaded, %u HRTFs, each %u samples, sampling rate: %u Hz\n",
+							filename, myhrir[i]->M, myhrir[i]->N, (unsigned int)(myhrir[i]->DataSamplingRate.values[0]));
+						 
+						// Convert to cartesian, initialize the look up
+						mysofa_tocartesian(myhrir[i]);
+						mylookup[i] = mysofa_lookup_init(myhrir[i]);
+						if (mylookup[i])
+						{
+							myneighborhood[i] = mysofa_neighborhood_init(myhrir[i], mylookup[i]);
 
+							// Transform the HRIRs to complex-valued spectral filters and copy to the HRTF array called myhrtf
+							myhrtf[i] = (UnityComplexNumber *)malloc(sizeof(UnityComplexNumber) * myhrir[i]->M * myhrir[i]->R * 2 * HRTFLEN);
+							UnityComplexNumber h[HRTFLEN * 2]; // for temporary impulse response and spectrum
+							float *hrir = myhrir[i]->DataIR.values; // temporary pointer to the source array
+							UnityComplexNumber *hrtf = myhrtf[i]; // temporary pointer to the destination array
+							for (unsigned int a = 0; a < myhrir[i]->M * myhrir[i]->R; a++)
+							{
+								// copy from source array
+								memset(h, 0, sizeof(h));
+								for (unsigned int n = 0; n < myhrir[i]->N; n++)
+									h[n + HRTFLEN].re = *(hrir++);
+								// FFT
+								FFT::Forward(h, HRTFLEN * 2, false);
+								// Copy to destination array
+								for (int n = 0; n < HRTFLEN * 2; n++)
+									*(hrtf++) = h[n];
+							}
+							mysofas[i] = 1; // set this file as usable
+						}
+						else
+						{
+							fprintf(pConsole, "%s: Look-up init failed!", filename);
+						}
+					}
+					else
+					{
+						fprintf(pConsole, "%s: Check failed!", filename);
+					}
+				}
+				else
+				{
+					fprintf(pConsole, "%s: Can't load file\n", filename);
+				}
+			}//iterate through all sofa files
 
-        }
-    };
+		}
+	};
 
     static HRTFData sharedData;
 
@@ -134,7 +145,7 @@ namespace Spatializer
         RegisterParameter(definition, "AudioSrc Attn", "", 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, P_AUDIOSRCATTN, "AudioSource distance attenuation");
         RegisterParameter(definition, "Fixed Volume", "", 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, P_FIXEDVOLUME, "Fixed volume amount");
         RegisterParameter(definition, "Custom Falloff", "", 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, P_CUSTOMFALLOFF, "Custom volume falloff amount (logarithmic)");
-		RegisterParameter(definition, "SOFA Selector", "", 0.0f, 2.0f, 0.0f, 1.0f, 1.0f, P_SOFASELECTOR, "HRTF Selector");
+		RegisterParameter(definition, "SOFA Selector", "", 0.0f, MAX_SOFAS-1, 0.0f, 1.0f, 1.0f, P_SOFASELECTOR, "HRTF Selector");
         definition.flags |= UnityAudioEffectDefinitionFlags_IsSpatializer;
         return numparams;
     }
@@ -201,14 +212,11 @@ namespace Spatializer
             !IsHostCompatible(state) || state->spatializerdata == NULL)
         {
             memcpy(outbuffer, inbuffer, length * outchannels * sizeof(float));
-            return UNITY_AUDIODSP_OK;
+            return UNITY_AUDIODSP_OK; 
         }
 
         EffectData* data = state->GetEffectData<EffectData>();
 		// in data->ch[0|1].h is space for the HRIRs
-
-		int Selper = (int)(data->p[P_SOFASELECTOR]);
-		fprintf(sharedData.pConsole, "SOFA File: %d; ", (int)Selper);
 
         static const float kRad2Deg = 180.0f / kPI;
 
@@ -230,31 +238,54 @@ namespace Spatializer
             azimuth += 2.0f * kPI;
         azimuth = FastClip(azimuth * kRad2Deg, 0.0f, 360.0f);
         float elevation = atan2f(dir_y, sqrtf(dir_x * dir_x + dir_z * dir_z) + 0.001f) * kRad2Deg;
-		fprintf(sharedData.pConsole, "Required direction: (%d,%d); ", (int)azimuth, (int)elevation);
+		fprintf(sharedData.pConsole, "Requested direction: (%d,%d); ", (int)azimuth, (int)elevation);
 
-		// Calculate the source direction in cartesian coordinates for the look-up
-		float t[3];
-		t[0] = (float)azimuth; // azimuth in deg
-		t[1] = (float)elevation; // elevation in deg
-		t[2] = 1.2; // radius in m
-		mysofa_s2c(t);
-		
-		// Get the index to the nearest HRTF direction
-		int nearest = mysofa_lookup(sharedData.mylookup, t);
-		fprintf(sharedData.pConsole, "  Nearest position found at index: %d\n", nearest);
-		
-		// Create a pointer to the left-ear HRTF (the right-ear HRTF is right behind the left-ear)
-		UnityComplexNumber *IRL;  
-		IRL = sharedData.myhrtf + nearest * (2*HRTFLEN) * 2;             // nearest * N * R
+		unsigned int Selper = (unsigned int)(data->p[P_SOFASELECTOR]);
+		fprintf(sharedData.pConsole, "HRTF Set: %d; ", (int)Selper);
 
-		// Copy the HRTFs for both ears to the data array
-		for (int chidx=1; chidx>=0; chidx--)		// copy left-ear to ch=1 and right-ear to ch=0
-			for (int n = 0; n < 2*HRTFLEN; n++)
-			{
-				data->ch[chidx].h[n].re = IRL->re;
-				data->ch[chidx].h[n].im = IRL->im;
-				IRL++;
-			}
+		if(sharedData.mysofas[Selper] == 0)
+		{
+			fprintf(sharedData.pConsole, "Set not loaded\n");
+			// Set filters to zero (mute)
+			for (int chidx = 1; chidx >= 0; chidx--)		// copy left-ear to ch=1 and right-ear to ch=0
+				for (int n = 0; n < 2 * HRTFLEN; n++)
+				{
+					data->ch[chidx].h[n].re = 0;
+					data->ch[chidx].h[n].im = 0;
+				}
+		}
+		else
+		{
+			// Calculate the source direction in cartesian coordinates for the look-up
+			float t[3];
+			t[0] = (float)azimuth; // azimuth in deg
+			t[1] = (float)elevation; // elevation in deg
+			t[2] = 1.2; // radius in m
+			mysofa_s2c(t);
+
+			// Get the index to the nearest HRTF direction
+			int nearest = mysofa_lookup(sharedData.mylookup[Selper], t);
+			fprintf(sharedData.pConsole, " Direction found: #%d ", nearest); 
+
+			t[0] = sharedData.myhrir[Selper]->SourcePosition.values[0];
+			t[1] = sharedData.myhrir[Selper]->SourcePosition.values[1];
+			t[2] = sharedData.myhrir[Selper]->SourcePosition.values[2];
+			mysofa_c2s(t);
+			fprintf(sharedData.pConsole, " (%f5.1,%f5.1)\n", t[0], t[1]);
+
+			// Create a pointer to the left-ear HRTF (the right-ear HRTF is right behind the left-ear)
+			UnityComplexNumber *IRL;
+			IRL = sharedData.myhrtf[Selper] + nearest * (2 * HRTFLEN) * 2;             // nearest * N * R
+
+			// Copy the HRTFs for both ears to the data array
+			for (int chidx = 1; chidx >= 0; chidx--)		// copy left-ear to ch=1 and right-ear to ch=0
+				for (int n = 0; n < 2 * HRTFLEN; n++)
+				{
+					data->ch[chidx].h[n].re = IRL->re;
+					data->ch[chidx].h[n].im = IRL->im;
+					IRL++;
+				}
+		}
 
         // From the FMOD documentation:
         //   A spread angle of 0 makes the stereo sound mono at the point of the 3D emitter.
