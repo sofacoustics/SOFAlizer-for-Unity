@@ -33,5 +33,36 @@ public class SpatializerUserParams : MonoBehaviour
 		source.GetSpatializerFloat(3, out SOFASelector);
         source.spatialize = EnableSpatialization;
         #endif
+
+		if (Input.GetKeyDown (KeyCode.Alpha0)) {
+			SOFASelector = 0;
+		}
+		else if (Input.GetKeyDown (KeyCode.Alpha1)) {
+			SOFASelector = 1;
+		}
+		else if (Input.GetKeyDown (KeyCode.Alpha2)) {
+			SOFASelector = 2;
+		}
+		else if (Input.GetKeyDown (KeyCode.Alpha3)) {
+			SOFASelector = 3;
+		}
+		else if (Input.GetKeyDown (KeyCode.Alpha4)) {
+			SOFASelector = 4;
+		}
+		else if (Input.GetKeyDown (KeyCode.Alpha5)) {
+			SOFASelector = 5;
+		}
+		else if (Input.GetKeyDown (KeyCode.Alpha6)) {
+			SOFASelector = 6;
+		}
+		else if (Input.GetKeyDown (KeyCode.Alpha7)) {
+			SOFASelector = 7;
+		}
+		else if (Input.GetKeyDown (KeyCode.Alpha8)) {
+			SOFASelector = 8;
+		}
+		else if (Input.GetKeyDown (KeyCode.Alpha9)) {
+			SOFASelector = 9;
+		}
     }
 }
