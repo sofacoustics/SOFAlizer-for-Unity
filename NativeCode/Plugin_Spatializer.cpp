@@ -93,9 +93,13 @@ namespace Spatializer
 				err = mysofa_check(sharedData.mysofa[i]); 	// Check the loaded structure
 				if (err == MYSOFA_OK)
 				{
-					fprintf(sharedData.pConsole, "%s: %u HRTFs, %u samples @ %u Hz.\n",
+					fprintf(sharedData.pConsole, "%s: %u HRTFs, %u samples @ %u Hz. %s, %s, %s.\n",
 						filename, sharedData.mysofa[i]->M, sharedData.mysofa[i]->N, 
-						(unsigned int)(sharedData.mysofa[i]->DataSamplingRate.values[0]));
+						(unsigned int)(sharedData.mysofa[i]->DataSamplingRate.values[0]),
+					    mysofa_getAttribute(sharedData.mysofa[i]->attributes,"DatabaseName"),
+						mysofa_getAttribute(sharedData.mysofa[i]->attributes, "Title"),
+						mysofa_getAttribute(sharedData.mysofa[i]->attributes, "ListenerShortName")
+						);
 
 					// Convert to cartesian, initialize the look up
 					mysofa_tocartesian(sharedData.mysofa[i]);

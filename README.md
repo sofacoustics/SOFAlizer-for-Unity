@@ -20,25 +20,26 @@ Compile SOFAlizer DLL:
 Start the scene:
 * In Unity start the scene: Assets\SampleScene.unity
 * Select SOFAlizer as spatializer plug in: Edit --> Project Settings --> Audio --> Spatializer Plugin --> SOFA Spatializer
-* Copy some SOFA files (e.g., from https://www.sofaconventions.org/mediawiki/index.php/Files) to the root directory. Rename them hrtfX.sofa with X from 0 to 9. 
-* Start the engine: Run
+* Copy some SOFA files (e.g., from https://www.sofaconventions.org/mediawiki/index.php/Files) to the root directory. Rename them to `hrtfX.sofa` with `X` from 0 to 9. 
+* Start the engine by clicking on "Run"
 
 Usage:
 ------
-On "run" of the Unity scene, SOFAlizer:
-* loads SOFA files "hrtfX.sofa" with X being from 0 to 9. These files must be located in the root directory of this project. 
-* resamples each HRTF set to the sampling rate provided in Audio --> Project Settings --> Audio --> System Sample Rate. This may take some time (can be avoided by using HRTFs sampled at the same rate as that from the Unity project). 
-* normalizes each HRTF set relative to the HRTF for the frontal position. 
-* crops the HRTFs to the length of 256 samples. 
+On "Run" of the scene, SOFAlizer:
+* Loads SOFA files `hrtfX.sofa` with `X` being from 0 to 9. These files must be located in the root directory of this project. The HRTFs must be stored using the SOFA convention "SimpleFreeFieldHRIR". 
+* Resamples each HRTF set to the sampling rate provided in Audio --> Project Settings --> Audio --> System Sample Rate. This may take some time (can be avoided by using HRTFs sampled at the same rate as that from the Unity project). 
+* Normalizes each HRTF set relative to the HRTF for the frontal position. 
+* Crops the HRTFs to the length of 256 samples. 
+* Transforms all impulse responses to the spectral domain for fast convolution in real-time.
 
 In the scene, the parameter "SOFA Selector" selects the index of the processed HRTF set. The selection of the loaded HRTF sets can be done at any time in real-time. If a non-loaded HRTF set is selected, the audio will be muted.
 
 In order to change the loaded HRTFs, stop the scene rendering, replace one or more of the SOFA files, and re-run the scene. 
 
-'''Enjoy!'''
+**Enjoy!**
 
 
 Acknowledgements:
 -----------------
 
-* Christian Hoene for the great mysofa library. 
+* Christian Hoene for the great libmysofa library for easy reading SOFA files: https://github.com/hoene/libmysofa
