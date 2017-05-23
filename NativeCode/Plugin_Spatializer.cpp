@@ -1,9 +1,16 @@
+// SOFAlizer - (c) Acoustics Research Institute
+
+// Authors: Piotr Majdak, Claudia Jenny
+// Based on Plugin_Spatializer from the package "Native Audio Plugin SDK"
+// Licensed under EUPL, see the license file
+// Uses libmysofa (Symonics GmbH, Christian Hoene)
+
 // Please note that this will only work on Unity 5.2 or higher.
 
+#define SOFALIZER_VERSION "1.0.0" // SOFAlizer version
+
 #include "AudioPluginUtil.h"
-
-#include "mysofa.h"
-
+#include "mysofa.h"  // include libmysofa by, Copyright (c) 2016-2017, Symonics GmbH, Christian Hoene
 
 extern float reverbmixbuffer[];
 
@@ -18,101 +25,37 @@ namespace Spatializer
         P_NUM
     };
 
-    const int HRTFLEN = 512;
+    const int HRTFLEN = 256;
 	const int MAX_SOFAS = 10;
 
 	const float GAINCORRECTION = 2.0f;
 
 	class HRTFData
 	{
-		struct CircleCoeffs
-		{
-			int numangles;
-			float* hrtf;
-			float* angles;
-
-		};
 
 	public:
-		MYSOFA_HRTF *myhrir[MAX_SOFAS];		// stores the SOFA structure
+		MYSOFA_HRTF *mysofa[MAX_SOFAS];		// stores the SOFA structure
 		MYSOFA_LOOKUP *mylookup[MAX_SOFAS];    // for the lookup
 		MYSOFA_NEIGHBORHOOD *myneighborhood[MAX_SOFAS];  // for the lookup
+		unsigned int mysofaflag[MAX_SOFAS]; // 0: HRTF set not loaded, 1: HRTF loaded and ready for rendering
+		UnityComplexNumber *hrtf[MAX_SOFAS];  // All HRTFs in frequency domain, number of elements = M * R * HRTFLEN * 2
 		FILE *pConsole;		// for debugging, use fprintf(pConsole, "my string");
-		UnityComplexNumber *myhrtf[MAX_SOFAS];  // All HRTFs in frequency domain, number of elements = M * R * HRTFLEN * 2
-		unsigned int mysofas[MAX_SOFAS]; // flag 
 
-
-	public:
 		HRTFData()
 		{
-			char filename[50];
-			int err;
-
-				// Allocate a console for debugging. Use fprintf(pConsole, string); for printinf
+			// Allocate a console for debugging. Use fprintf(sharedData.pConsole, string); for printing
 			AllocConsole();
 			freopen_s(&pConsole, "CONOUT$", "wb", stdout);
-			fprintf(pConsole, "SOFA Spatializer: Version of 20 May 2017\n");
-
-				// Iterate through the SOFA files
+			fprintf(pConsole, "SOFAlizer %s: SOFA-based spatializer (c) ARI Team, OeAW\n", SOFALIZER_VERSION);
+		
 			for (unsigned int i = 0; i < MAX_SOFAS; i++)
 			{
-					// first, assume this file as not loaded and not usable
-				mysofas[i] = 0; 
-					// Open the SOFA file
-				sprintf_s(filename, sizeof(filename), "hrtf%u.sofa", i);
-				myhrir[i] = mysofa_load(filename, &err);
-				if (myhrir[i])
-				{
-					err = mysofa_check(myhrir[i]); 	// Check the loaded structure
-					if (err == MYSOFA_OK)
-					{
-						fprintf(pConsole, "%s: Loaded, %u HRTFs, each %u samples, sampling rate: %u Hz\n",
-							filename, myhrir[i]->M, myhrir[i]->N, (unsigned int)(myhrir[i]->DataSamplingRate.values[0]));
-						 
-						// Convert to cartesian, initialize the look up
-						mysofa_tocartesian(myhrir[i]);
-						mylookup[i] = mysofa_lookup_init(myhrir[i]);
-						if (mylookup[i])
-						{
-							myneighborhood[i] = mysofa_neighborhood_init(myhrir[i], mylookup[i]);
-
-							// Transform the HRIRs to complex-valued spectral filters and copy to the HRTF array called myhrtf
-							myhrtf[i] = (UnityComplexNumber *)malloc(sizeof(UnityComplexNumber) * myhrir[i]->M * myhrir[i]->R * 2 * HRTFLEN);
-							UnityComplexNumber h[HRTFLEN * 2]; // for temporary impulse response and spectrum
-							float *hrir = myhrir[i]->DataIR.values; // temporary pointer to the source array
-							UnityComplexNumber *hrtf = myhrtf[i]; // temporary pointer to the destination array
-							for (unsigned int a = 0; a < myhrir[i]->M * myhrir[i]->R; a++)
-							{
-								// copy from source array
-								memset(h, 0, sizeof(h));
-								for (unsigned int n = 0; n < myhrir[i]->N; n++)
-									h[n + HRTFLEN].re = *(hrir++);
-								// FFT
-								FFT::Forward(h, HRTFLEN * 2, false);
-								// Copy to destination array
-								for (int n = 0; n < HRTFLEN * 2; n++)
-									*(hrtf++) = h[n];
-							}
-							mysofas[i] = 1; // set this file as usable
-						}
-						else
-						{
-							fprintf(pConsole, "%s: Look-up init failed!", filename);
-						}
-					}
-					else
-					{
-						fprintf(pConsole, "%s: Check failed!", filename);
-					}
-				}
-				else
-				{
-					fprintf(pConsole, "%s: Can't load file\n", filename);
-				}
-			}//iterate through all sofa files
-
+				// stamp all files as not loaded and not usable
+				mysofaflag[i] = 0;
+			}
 		}
-	};
+
+	}; // end of class HRTFData
 
     static HRTFData sharedData;
 
@@ -129,6 +72,111 @@ namespace Spatializer
         float p[P_NUM];
         InstanceChannel ch[2];
     };
+
+	void LoadSOFAs(UnityAudioEffectState* state)
+	{
+		if (state->samplerate < 8000) return; // terminate if sampling rate below 8 kHz
+		fprintf(sharedData.pConsole, "System sampling rate: %u\n", state->samplerate);
+
+		// Iterate through the SOFA files
+		for (unsigned int i = 0; i < MAX_SOFAS; i++)
+		{
+			// first, assume this file as not loaded and not usable
+			sharedData.mysofaflag[i] = 0;
+			// Open the SOFA file
+			int err;
+			char filename[50];
+			sprintf_s(filename, sizeof(filename), "hrtf%u.sofa", i);
+			sharedData.mysofa[i] = mysofa_load(filename, &err);
+			if (sharedData.mysofa[i])
+			{
+				err = mysofa_check(sharedData.mysofa[i]); 	// Check the loaded structure
+				if (err == MYSOFA_OK)
+				{
+					fprintf(sharedData.pConsole, "%s: %u HRTFs, %u samples @ %u Hz.\n",
+						filename, sharedData.mysofa[i]->M, sharedData.mysofa[i]->N, 
+						(unsigned int)(sharedData.mysofa[i]->DataSamplingRate.values[0]));
+
+					// Convert to cartesian, initialize the look up
+					mysofa_tocartesian(sharedData.mysofa[i]);
+					sharedData.mylookup[i] = mysofa_lookup_init(sharedData.mysofa[i]);
+					if (sharedData.mylookup[i])
+					{
+						// initialize lookup table
+						sharedData.myneighborhood[i] = mysofa_neighborhood_init(sharedData.mysofa[i], sharedData.mylookup[i]);
+						// resample if required
+						if (state->samplerate != sharedData.mysofa[i]->DataSamplingRate.values[0])
+						{
+							err = mysofa_resample(sharedData.mysofa[i], (float)state->samplerate);
+							fprintf(sharedData.pConsole, "--> resampled to %5.0f Hz, new IR length: %u samples\n", sharedData.mysofa[i]->DataSamplingRate.values[0], sharedData.mysofa[i]->N);
+						}
+
+						// Scale HRTFs to have a normalized amplitude relative to the frontal position
+						mysofa_loudness(sharedData.mysofa[i]);
+
+						// Determine the final length of each IR
+						unsigned int length; // length of the IRs to be copied 
+						if (sharedData.mysofa[i]->N > HRTFLEN)
+						{
+							length = HRTFLEN; // too long: only the HRTFLEN part of each IR
+							fprintf(sharedData.pConsole, "--> cropped to %u samples\n", HRTFLEN);
+						}
+						else
+						{
+							length = sharedData.mysofa[i]->N; // OK, consider the full IR
+						}
+
+						// Transform the HRIRs to complex-valued spectral filters and copy to the HRTF array called myhrtf
+						sharedData.hrtf[i] = (UnityComplexNumber *)malloc(sizeof(UnityComplexNumber) * sharedData.mysofa[i]->M * sharedData.mysofa[i]->R * 2 * HRTFLEN);
+						UnityComplexNumber h[HRTFLEN * 2]; // for temporary impulse response and spectrum
+						float *hrir = sharedData.mysofa[i]->DataIR.values; // temporary pointer to the source array
+						UnityComplexNumber *hrtf = sharedData.hrtf[i]; // temporary pointer to the destination array						
+						for (unsigned int a = 0; a < sharedData.mysofa[i]->M * sharedData.mysofa[i]->R; a++)
+						{
+							// copy from source array
+							memset(h, 0, sizeof(h)); // clear buffer 
+							for (unsigned int n = 0; n < length; n++)
+								h[n + HRTFLEN].re = hrir[a*sharedData.mysofa[i]->N + n];
+							// FFT
+							FFT::Forward(h, HRTFLEN * 2, false);
+							// Copy to destination array
+							for (int n = 0; n < HRTFLEN * 2; n++)
+								*(hrtf++) = h[n];
+						}
+						sharedData.mysofaflag[i] = 1; // set this file as usable
+					}
+					else
+					{
+						fprintf(sharedData.pConsole, "%s: Look-up init failed!\n", filename);
+					}
+				}
+				else
+				{
+					fprintf(sharedData.pConsole, "%s: Check failed!\n", filename);
+				}
+			}
+			else
+			{
+				fprintf(sharedData.pConsole, "%s: Can't load file\n", filename);
+			}
+		}//iterate through all sofa files
+
+	}
+
+	void UnloadSOFAs()
+	{
+		fprintf(sharedData.pConsole, "Unloaded!");
+		for (unsigned int i = 0; i < MAX_SOFAS; i++)
+		{
+			if(sharedData.mysofaflag[i])
+			{
+				mysofa_free(sharedData.mysofa[i]);
+				free(sharedData.hrtf[i]);
+				mysofa_lookup_free(sharedData.mylookup[i]);
+				mysofa_neighborhood_free(sharedData.myneighborhood[i]);
+			}
+		}
+	}
 
     inline bool IsHostCompatible(UnityAudioEffectState* state)
     {
@@ -162,12 +210,15 @@ namespace Spatializer
 
     UNITY_AUDIODSP_RESULT UNITY_AUDIODSP_CALLBACK CreateCallback(UnityAudioEffectState* state)
     {
-        EffectData* effectdata = new EffectData;
+		EffectData* effectdata = new EffectData;
         memset(effectdata, 0, sizeof(EffectData));
         state->effectdata = effectdata;
         if (IsHostCompatible(state))
             state->spatializerdata->distanceattenuationcallback = DistanceAttenuationCallback;
         InitParametersFromDefinitions(InternalRegisterEffectDefinition, effectdata->p);
+
+		// Load all SOFA files
+		LoadSOFAs(state);
         return UNITY_AUDIODSP_OK;
     }
 
@@ -175,6 +226,8 @@ namespace Spatializer
     {
         EffectData* data = state->GetEffectData<EffectData>();
         delete data;
+		// Free the memory from all HRTFs 
+		UnloadSOFAs();
         return UNITY_AUDIODSP_OK;
     }
 
@@ -238,14 +291,13 @@ namespace Spatializer
             azimuth += 2.0f * kPI;
         azimuth = FastClip(azimuth * kRad2Deg, 0.0f, 360.0f);
         float elevation = atan2f(dir_y, sqrtf(dir_x * dir_x + dir_z * dir_z) + 0.001f) * kRad2Deg;
-		fprintf(sharedData.pConsole, "Requested direction: (%d,%d); ", (int)azimuth, (int)elevation);
 
 		unsigned int Selper = (unsigned int)(data->p[P_SOFASELECTOR]);
-		fprintf(sharedData.pConsole, "HRTF Set: %d; ", (int)Selper);
+		fprintf(sharedData.pConsole, "Set: #%d; ", (int)Selper);
 
-		if(sharedData.mysofas[Selper] == 0)
+		if(sharedData.mysofaflag[Selper] == 0)
 		{
-			fprintf(sharedData.pConsole, "Set not loaded\n");
+			fprintf(sharedData.pConsole, "(not loaded)\n");
 			// Set filters to zero (mute)
 			for (int chidx = 1; chidx >= 0; chidx--)		// copy left-ear to ch=1 and right-ear to ch=0
 				for (int n = 0; n < 2 * HRTFLEN; n++)
@@ -256,6 +308,7 @@ namespace Spatializer
 		}
 		else
 		{
+			fprintf(sharedData.pConsole, "Requested: (%d, %d); ", (int)azimuth, (int)elevation);
 			// Calculate the source direction in cartesian coordinates for the look-up
 			float t[3];
 			t[0] = (float)azimuth; // azimuth in deg
@@ -265,17 +318,17 @@ namespace Spatializer
 
 			// Get the index to the nearest HRTF direction
 			int nearest = mysofa_lookup(sharedData.mylookup[Selper], t);
-			fprintf(sharedData.pConsole, " Direction found: #%d ", nearest); 
+			fprintf(sharedData.pConsole, "Found: #%d ", nearest); 
 
-			t[0] = sharedData.myhrir[Selper]->SourcePosition.values[0];
-			t[1] = sharedData.myhrir[Selper]->SourcePosition.values[1];
-			t[2] = sharedData.myhrir[Selper]->SourcePosition.values[2];
+			t[0] = sharedData.mysofa[Selper]->SourcePosition.values[3*nearest];
+			t[1] = sharedData.mysofa[Selper]->SourcePosition.values[3*nearest+1];
+			t[2] = sharedData.mysofa[Selper]->SourcePosition.values[3*nearest+2];
 			mysofa_c2s(t);
-			fprintf(sharedData.pConsole, " (%f0.1,%f0.1)\n", t[0], t[1]);
+			fprintf(sharedData.pConsole, "(%5.1f, %5.1f)\n", t[0], t[1]);
 
 			// Create a pointer to the left-ear HRTF (the right-ear HRTF is right behind the left-ear)
 			UnityComplexNumber *IRL;
-			IRL = sharedData.myhrtf[Selper] + nearest * (2 * HRTFLEN) * 2;             // nearest * N * R
+			IRL = sharedData.hrtf[Selper] + nearest * (2 * HRTFLEN) * 2;             // nearest * N * R
 
 			// Copy the HRTFs for both ears to the data array
 			for (int chidx = 1; chidx >= 0; chidx--)		// copy left-ear to ch=1 and right-ear to ch=0
