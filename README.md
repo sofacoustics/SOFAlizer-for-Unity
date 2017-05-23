@@ -1,6 +1,6 @@
 # SOFAlizer for Unity
 
-SOFAlizer is a SOFA-based audio spatializer for Unity. It is a Unity <https://docs.unity3d.com/Manual/NativePlugins.html native plugin>. It loads sets of spatial filters so-called <https://en.wikipedia.org/wiki/Head-related_transfer_function HRTFs> stored in <https://www.sofaconventions.org/ SOFA> files and renders spatial audio based on a selected HRTF set. The output is a binaural signal intended to be listened to via headphones. 
+SOFAlizer is a SOFA-based audio spatializer for Unity. It is a Unity [native plugin] (https://docs.unity3d.com/Manual/NativePlugins.html). It loads sets of spatial filters so-called [HRTFs] (https://en.wikipedia.org/wiki/Head-related_transfer_function) stored in [SOFA] (https://www.sofaconventions.org/) files and renders spatial audio based on a selected HRTF set. The output is a binaural signal intended to be listened to via headphones. 
 
 
 Installation:
@@ -20,7 +20,7 @@ Compile SOFAlizer DLL:
 Start the scene:
 * In Unity start the scene: Assets\SampleScene.unity
 * Select SOFAlizer as spatializer plug in: Edit --> Project Settings --> Audio --> Spatializer Plugin --> SOFA Spatializer
-* Copy some SOFA files (e.g., from <https://www.sofaconventions.org/mediawiki/index.php/Files here>) to the root directory. Rename them hrtfX.sofa with X from 0 to 9. 
+* Copy some SOFA files (e.g., from https://www.sofaconventions.org/mediawiki/index.php/Files) to the root directory. Rename them hrtfX.sofa with X from 0 to 9. 
 * Start the engine: Run
 
 Usage:
