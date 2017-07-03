@@ -1,16 +1,11 @@
-# SOFAlizer for Unity
+# SOFAlizer for Unity 1.0.0
 
 SOFAlizer is a SOFA-based audio spatializer for Unity. It is a Unity [native plugin](https://docs.unity3d.com/Manual/NativePlugins.html). It loads sets of spatial filters so-called [HRTFs](https://en.wikipedia.org/wiki/Head-related_transfer_function) stored in [SOFA](https://www.sofaconventions.org/) files and renders spatial audio based on a selected HRTF set. The output is a binaural signal intended to be listened to via headphones. 
 
+Currently only Windows is supported.
 
 Installation:
 -------------
-
-Compile libmysofa:
-* Download libmysofa from https://github.com/hoene/libmysofa (Clone in git)
-* The directory "libmysofa" must be at the same level as the directory "SOFA-Spatializer-for-Unity".
-* Start libmysofa.sln in libmysofa in Visual Studio
-* Rebuild mysofa (Release, x64)
 
 Compile SOFAlizer DLL:
 * Start NativeCode\VisualStudio\AudioPluginSOFA.sln
@@ -35,6 +30,8 @@ On "Run" of the scene, SOFAlizer:
 In the scene, the parameter "SOFA Selector" selects the index of the processed HRTF set. The selection of the loaded HRTF sets can be done at any time in real-time. If a non-loaded HRTF set is selected, the audio will be muted.
 
 In order to change the loaded HRTFs, stop the scene rendering, replace one or more of the SOFA files, and re-run the scene. 
+
+Log file SOFAlizer.log will be created where the loaded files and their transformations are logged.
 
 **Enjoy!**
 

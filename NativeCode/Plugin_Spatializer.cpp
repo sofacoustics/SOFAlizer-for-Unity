@@ -7,7 +7,7 @@
 
 // Please note that this will only work on Unity 5.2 or higher.
 
-#define SOFALIZER_VERSION "0.9.0" // SOFAlizer version
+#define SOFALIZER_VERSION "1.0.0" // SOFAlizer version
 
 #include "AudioPluginUtil.h"
 #include "mysofa.h"  // include libmysofa by, Copyright (c) 2016-2017, Symonics GmbH, Christian Hoene
@@ -25,8 +25,8 @@ namespace Spatializer
         P_NUM
     };
 
-    const int HRTFLEN = 256;
-	const int MAX_SOFAS = 10;
+    const int HRTFLEN = 256; // currently max size of the HRTFs
+	const int MAX_SOFAS = 10; // currently max number of HRTF sets to be loaded on load.
 
 	const float GAINCORRECTION = 2.0f;
 
@@ -39,15 +39,22 @@ namespace Spatializer
 		MYSOFA_NEIGHBORHOOD *myneighborhood[MAX_SOFAS];  // for the lookup
 		unsigned int mysofaflag[MAX_SOFAS]; // 0: HRTF set not loaded, 1: HRTF loaded and ready for rendering
 		UnityComplexNumber *hrtf[MAX_SOFAS];  // All HRTFs in frequency domain, number of elements = M * R * HRTFLEN * 2
+		FILE *Log;	// logging to the file on load/unload of HRTFs
+#if _DEBUG
 		FILE *pConsole;		// for debugging, use fprintf(pConsole, "my string");
+#endif
 
 		HRTFData()
 		{
+#if _DEBUG
 			// Allocate a console for debugging. Use fprintf(sharedData.pConsole, string); for printing
 			AllocConsole();
 			freopen_s(&pConsole, "CONOUT$", "wb", stdout);
-			fprintf(pConsole, "SOFAlizer %s: SOFA-based spatializer (c) ARI Team, OeAW\n", SOFALIZER_VERSION);
-		
+			fprintf(pConsole, "SOFAlizer %s: SOFA-based spatializer (c) Piotr Majdak, ARI, OeAW\n", SOFALIZER_VERSION);
+#endif
+			fopen_s(&Log, "SOFAlizer.log", "a");
+			fprintf(Log, "SOFAlizer %s: SOFA-based spatializer (c) Piotr Majdak, ARI, OeAW\n", SOFALIZER_VERSION);
+
 			for (unsigned int i = 0; i < MAX_SOFAS; i++)
 			{
 				// stamp all files as not loaded and not usable
@@ -76,8 +83,10 @@ namespace Spatializer
 	void LoadSOFAs(UnityAudioEffectState* state)
 	{
 		if (state->samplerate < 8000) return; // terminate if sampling rate below 8 kHz
+#if _DEBUG
 		fprintf(sharedData.pConsole, "System sampling rate: %u\n", state->samplerate);
-
+#endif
+		fprintf(sharedData.Log, "System sampling rate: %u\n", state->samplerate);
 		// Iterate through the SOFA files
 		for (unsigned int i = 0; i < MAX_SOFAS; i++)
 		{
@@ -93,6 +102,7 @@ namespace Spatializer
 				err = mysofa_check(sharedData.mysofa[i]); 	// Check the loaded structure
 				if (err == MYSOFA_OK)
 				{
+#if _DEBUG
 					fprintf(sharedData.pConsole, "%s: %u HRTFs, %u samples @ %u Hz. %s, %s, %s.\n",
 						filename, sharedData.mysofa[i]->M, sharedData.mysofa[i]->N, 
 						(unsigned int)(sharedData.mysofa[i]->DataSamplingRate.values[0]),
@@ -100,7 +110,14 @@ namespace Spatializer
 						mysofa_getAttribute(sharedData.mysofa[i]->attributes, "Title"),
 						mysofa_getAttribute(sharedData.mysofa[i]->attributes, "ListenerShortName")
 						);
-
+#endif
+					fprintf(sharedData.Log, "%s: %u HRTFs, %u samples @ %u Hz. %s, %s, %s.\n",
+						filename, sharedData.mysofa[i]->M, sharedData.mysofa[i]->N,
+						(unsigned int)(sharedData.mysofa[i]->DataSamplingRate.values[0]),
+						mysofa_getAttribute(sharedData.mysofa[i]->attributes, "DatabaseName"),
+						mysofa_getAttribute(sharedData.mysofa[i]->attributes, "Title"),
+						mysofa_getAttribute(sharedData.mysofa[i]->attributes, "ListenerShortName")
+					);
 					// Convert to cartesian, initialize the look up
 					mysofa_tocartesian(sharedData.mysofa[i]);
 					sharedData.mylookup[i] = mysofa_lookup_init(sharedData.mysofa[i]);
@@ -112,7 +129,10 @@ namespace Spatializer
 						if (state->samplerate != sharedData.mysofa[i]->DataSamplingRate.values[0])
 						{
 							err = mysofa_resample(sharedData.mysofa[i], (float)state->samplerate);
+#if _DEBUG
 							fprintf(sharedData.pConsole, "--> resampled to %5.0f Hz, new IR length: %u samples\n", sharedData.mysofa[i]->DataSamplingRate.values[0], sharedData.mysofa[i]->N);
+#endif
+							fprintf(sharedData.Log, "--> resampled to %5.0f Hz, new IR length: %u samples\n", sharedData.mysofa[i]->DataSamplingRate.values[0], sharedData.mysofa[i]->N);
 						}
 
 						// Scale HRTFs to have a normalized amplitude relative to the frontal position
@@ -123,7 +143,10 @@ namespace Spatializer
 						if (sharedData.mysofa[i]->N > HRTFLEN)
 						{
 							length = HRTFLEN; // too long: only the HRTFLEN part of each IR
+#if _DEBUG
 							fprintf(sharedData.pConsole, "--> cropped to %u samples\n", HRTFLEN);
+#endif
+							fprintf(sharedData.Log, "--> cropped to %u samples\n", HRTFLEN);
 						}
 						else
 						{
@@ -151,17 +174,26 @@ namespace Spatializer
 					}
 					else
 					{
+#if _DEBUG
 						fprintf(sharedData.pConsole, "%s: Look-up init failed!\n", filename);
+#endif
+						fprintf(sharedData.Log, "%s: Look-up init failed!\n", filename);
 					}
 				}
 				else
 				{
+#if _DEBUG					
 					fprintf(sharedData.pConsole, "%s: Check failed!\n", filename);
+#endif
+					fprintf(sharedData.Log, "%s: Check failed!\n", filename);
 				}
 			}
 			else
 			{
+#if _DEBUG
 				fprintf(sharedData.pConsole, "%s: Can't load file\n", filename);
+#endif
+				fprintf(sharedData.Log, "%s: Can't load file\n", filename);
 			}
 		}//iterate through all sofa files
 
@@ -169,7 +201,12 @@ namespace Spatializer
 
 	void UnloadSOFAs()
 	{
+#if _DEBUG
 		fprintf(sharedData.pConsole, "Unloaded!");
+#endif
+		fprintf(sharedData.Log, "Unloaded! **************************************************************************\n\n");
+		fclose(sharedData.Log);
+
 		for (unsigned int i = 0; i < MAX_SOFAS; i++)
 		{
 			if(sharedData.mysofaflag[i])
@@ -289,19 +326,15 @@ namespace Spatializer
         float dir_y = m[1] * px + m[5] * py + m[9] * pz + m[13];
         float dir_z = m[2] * px + m[6] * py + m[10] * pz + m[14];
 
-		// Calculate the source direction in spherical coordinates
-        float azimuth = (fabsf(dir_z) < 0.001f) ? 0.0f : atan2f(dir_x, dir_z);
-        if (azimuth < 0.0f)
-            azimuth += 2.0f * kPI;
-        azimuth = FastClip(azimuth * kRad2Deg, 0.0f, 360.0f);
-        float elevation = atan2f(dir_y, sqrtf(dir_x * dir_x + dir_z * dir_z) + 0.001f) * kRad2Deg;
-
 		unsigned int Selper = (unsigned int)(data->p[P_SOFASELECTOR]);
+#if _DEBUG
 		fprintf(sharedData.pConsole, "Set: #%d; ", (int)Selper);
-
+#endif
 		if(sharedData.mysofaflag[Selper] == 0)
 		{
+#if _DEBUG
 			fprintf(sharedData.pConsole, "(not loaded)\n");
+#endif
 			// Set filters to zero (mute)
 			for (int chidx = 1; chidx >= 0; chidx--)		// copy left-ear to ch=1 and right-ear to ch=0
 				for (int n = 0; n < 2 * HRTFLEN; n++)
@@ -312,23 +345,31 @@ namespace Spatializer
 		}
 		else
 		{
+#if _DEBUG
+			// Calculate the source direction in spherical coordinates
+			float azimuth = (fabsf(dir_z) < 0.001f) ? 0.0f : atan2f(dir_x, dir_z);
+			if (azimuth < 0.0f)
+				azimuth += 2.0f * kPI;
+			azimuth = FastClip(azimuth * kRad2Deg, 0.0f, 360.0f);
+			float elevation = atan2f(dir_y, sqrtf(dir_x * dir_x + dir_z * dir_z) + 0.001f) * kRad2Deg;
 			fprintf(sharedData.pConsole, "Requested: (%d, %d); ", (int)azimuth, (int)elevation);
+#endif
 			// Calculate the source direction in cartesian coordinates for the look-up
 			float t[3];
-			t[0] = (float)azimuth; // azimuth in deg
-			t[1] = (float)elevation; // elevation in deg
-			t[2] = 1.2; // radius in m
-			mysofa_s2c(t);
+			t[0] = dir_z; // Z in Unity is X in SOFA
+			t[1] = dir_x; // X in Unity is Y in SOFA
+			t[2] = dir_y; // Y in Unity is Z in SOFA
 
 			// Get the index to the nearest HRTF direction
 			int nearest = mysofa_lookup(sharedData.mylookup[Selper], t);
+#if _DEBUG
 			fprintf(sharedData.pConsole, "Found: #%d ", nearest); 
-
 			t[0] = sharedData.mysofa[Selper]->SourcePosition.values[3*nearest];
 			t[1] = sharedData.mysofa[Selper]->SourcePosition.values[3*nearest+1];
 			t[2] = sharedData.mysofa[Selper]->SourcePosition.values[3*nearest+2];
 			mysofa_c2s(t);
 			fprintf(sharedData.pConsole, "(%5.1f, %5.1f)\n", t[0], t[1]);
+#endif
 
 			// Create a pointer to the left-ear HRTF (the right-ear HRTF is right behind the left-ear)
 			UnityComplexNumber *IRL;
