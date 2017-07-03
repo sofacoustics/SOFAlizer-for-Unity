@@ -7,7 +7,7 @@
 
 // Please note that this will only work on Unity 5.2 or higher.
 
-#define SOFALIZER_VERSION "1.0.0" // SOFAlizer version
+#define SOFALIZER_VERSION "0.9.0" // SOFAlizer version
 
 #include "AudioPluginUtil.h"
 #include "mysofa.h"  // include libmysofa by, Copyright (c) 2016-2017, Symonics GmbH, Christian Hoene

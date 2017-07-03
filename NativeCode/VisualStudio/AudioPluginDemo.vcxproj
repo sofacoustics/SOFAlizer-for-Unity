@@ -117,7 +117,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>kernel32.lib;user32.lib;winmm.lib;mysofa.lib;zlibstat.lib;pthreadVC2.lib</AdditionalDependencies>
+      <AdditionalDependencies>winmm.lib;third-party\libmysofa\$(Platform)\$(Configuration)\mysofa.lib;third-party\zlib\zlibstat.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>../../../libmysofa\bin\$(Platform)\$(Configuration)\;../../../libmysofa\third-party\zlib-1.2.11\contrib\vstudio\vc14\x64\ZlibStatRelease;../../../libmysofa\third-party\pthreads-win32\Pre-built.2\lib\x64</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -172,14 +172,15 @@ copy $(TargetPath) ..\..\Assets\Plugins\x86\$(TargetName).dll
       <ExceptionHandling>false</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FloatingPointExceptions>false</FloatingPointExceptions>
-      <AdditionalIncludeDirectories>../../../libmysofa/src/hrtf</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <AdditionalDependencies>winmm.lib;../../../libmysofa\bin\$(Platform)\$(Configuration)\mysofa.lib;../../../libmysofa\third-party\zlib-1.2.11\contrib\vstudio\vc14\x64\ZlibStatRelease\zlibstat.lib;../../../libmysofa\third-party\pthreads-win32\Pre-built.2\lib\x64\pthreadVC2.lib</AdditionalDependencies>
+      <AdditionalDependencies>winmm.lib;third-party\libmysofa\$(Platform)\$(Configuration)\mysofa.lib;third-party\zlib\zlibstat.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
