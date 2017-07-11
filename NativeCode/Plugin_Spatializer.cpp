@@ -54,7 +54,7 @@ namespace Spatializer
 #endif
 			fopen_s(&Log, "SOFAlizer.log", "a");
 			fprintf(Log, "SOFAlizer %s: SOFA-based spatializer (c) Piotr Majdak, ARI, OeAW\n", SOFALIZER_VERSION);
-
+			fclose(Log);
 			for (unsigned int i = 0; i < MAX_SOFAS; i++)
 			{
 				// stamp all files as not loaded and not usable
@@ -86,6 +86,7 @@ namespace Spatializer
 #if _DEBUG
 		fprintf(sharedData.pConsole, "System sampling rate: %u\n", state->samplerate);
 #endif
+		fopen_s(&(sharedData.Log), "SOFAlizer.log", "a");
 		fprintf(sharedData.Log, "System sampling rate: %u\n", state->samplerate);
 		// Iterate through the SOFA files
 		for (unsigned int i = 0; i < MAX_SOFAS; i++)
