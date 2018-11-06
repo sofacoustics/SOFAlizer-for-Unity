@@ -30,6 +30,8 @@ namespace Spatializer
 
 	const float GAINCORRECTION = 2.0f;
 
+	static int instanceCounter = 0;
+
 	class HRTFData
 	{
 
@@ -260,7 +262,12 @@ namespace Spatializer
         InitParametersFromDefinitions(InternalRegisterEffectDefinition, effectdata->p);
 
 		// Load all SOFA files
-		LoadSOFAs(state);
+		if (0 == instanceCounter) {
+			LoadSOFAs(state);
+		}
+		
+		instanceCounter++;
+
         return UNITY_AUDIODSP_OK;
     }
 
@@ -268,8 +275,14 @@ namespace Spatializer
     {
         EffectData* data = state->GetEffectData<EffectData>();
         delete data;
+
+		instanceCounter--;
+		
 		// Free the memory from all HRTFs 
-		UnloadSOFAs();
+		if (0 == instanceCounter) {
+			UnloadSOFAs();
+		}
+		
         return UNITY_AUDIODSP_OK;
     }
 
