@@ -7,7 +7,7 @@
 
 // Please note that this will only work on Unity 5.2 or higher.
 
-#define SOFALIZER_VERSION "1.0.1" // SOFAlizer version
+#define SOFALIZER_VERSION "1.2.0" // SOFAlizer version
 
 #include "AudioPluginUtil.h"
 #include "mysofa.h"  // include libmysofa by, Copyright (c) 2016-2017, Symonics GmbH, Christian Hoene
@@ -25,7 +25,7 @@ namespace Spatializer
         P_NUM
     };
 
-    const int HRTFLEN = 256; // currently max size of the HRTFs
+    const int HRTFLEN = 128; // currently max size of the HRTFs
 	const int MAX_SOFAS = 10; // currently max number of HRTF sets to be loaded on load.
 
 	const float GAINCORRECTION = 2.0f;
@@ -70,26 +70,28 @@ namespace Spatializer
 
     struct InstanceChannel
     {
-        UnityComplexNumber h[HRTFLEN * 2];
-        UnityComplexNumber x[HRTFLEN * 2];
+		UnityComplexNumber h[HRTFLEN * 2] = { 0 };
+		UnityComplexNumber x[HRTFLEN * 2] = { 0 };
         UnityComplexNumber y[HRTFLEN * 2];
-        float buffer[HRTFLEN * 2];
-    };
+		float buffer[HRTFLEN * 2] = { 0 };
+		float yoverlap[HRTFLEN] = { 0 };
+	};
 
     struct EffectData
     {
         float p[P_NUM];
         InstanceChannel ch[2];
+		float oldsourcepos[3];
     };
 
 	void LoadSOFAs(UnityAudioEffectState* state)
 	{
 		if (state->samplerate < 8000) return; // terminate if sampling rate below 8 kHz
 #if _DEBUG
-		fprintf(sharedData.pConsole, "System sampling rate: %u\n", state->samplerate);
+		fprintf(sharedData.pConsole, "System sampling rate: %u, Buffer size:%u samples\n", state->samplerate, state->dspbuffersize);
 #endif
 		fopen_s(&(sharedData.Log), "SOFAlizer.log", "a");
-		fprintf(sharedData.Log, "System sampling rate: %u\n", state->samplerate);
+		fprintf(sharedData.Log, "System sampling rate: %u Hz, Buffer size:%u samples\n", state->samplerate, state->dspbuffersize);
 		// Iterate through the SOFA files
 		for (unsigned int i = 0; i < MAX_SOFAS; i++)
 		{
@@ -323,9 +325,6 @@ namespace Spatializer
             return UNITY_AUDIODSP_OK; 
         }
 
-        EffectData* data = state->GetEffectData<EffectData>();
-		// in data->ch[0|1].h is space for the HRIRs
-
         static const float kRad2Deg = 180.0f / kPI;
 
         float* m = state->spatializerdata->listenermatrix;
@@ -340,6 +339,8 @@ namespace Spatializer
         float dir_y = m[1] * px + m[5] * py + m[9] * pz + m[13];
         float dir_z = m[2] * px + m[6] * py + m[10] * pz + m[14];
 
+		EffectData* data = state->GetEffectData<EffectData>();
+
 		unsigned int Selper = (unsigned int)(data->p[P_SOFASELECTOR]);
 #if _DEBUG
 		fprintf(sharedData.pConsole, "Set: #%d; ", (int)Selper);
@@ -350,113 +351,103 @@ namespace Spatializer
 			fprintf(sharedData.pConsole, "(not loaded)\n");
 #endif
 			// Set filters to zero (mute)
-			for (int chidx = 1; chidx >= 0; chidx--)		// copy left-ear to ch=1 and right-ear to ch=0
-				for (int n = 0; n < 2 * HRTFLEN; n++)
-				{
-					data->ch[chidx].h[n].re = 0;
-					data->ch[chidx].h[n].im = 0;
-				}
+			memset(outbuffer, 0, length * outchannels * sizeof(float));
+			return UNITY_AUDIODSP_OK;
 		}
-		else
+#if _DEBUG
+		// Calculate the source direction in spherical coordinates
+		float azimuth = (fabsf(dir_z) < 0.001f) ? 0.0f : atan2f(dir_x, dir_z);
+		if (azimuth < 0.0f)
+			azimuth += 2.0f * kPI;
+		azimuth = FastClip(azimuth * kRad2Deg, 0.0f, 360.0f);
+		float elevation = atan2f(dir_y, sqrtf(dir_x * dir_x + dir_z * dir_z) + 0.001f) * kRad2Deg;
+		fprintf(sharedData.pConsole, "Requested: (%d, %d); ", (int)azimuth, (int)elevation);
+#endif
+		// Calculate the source direction in cartesian coordinates
+		float t[3], o[3];
+
+		o[0] = data->oldsourcepos[0];  // get previously saved position
+		o[1] = data->oldsourcepos[1];
+		o[2] = data->oldsourcepos[2];
+
+		t[0] = dir_z; // Z in Unity is X in SOFA
+		t[1] = -dir_x; // X in Unity is -Y in SOFA
+		t[2] = dir_y; // Y in Unity is Z in SOFA
+
+		data->oldsourcepos[0] = t[0]; // save current position as old
+		data->oldsourcepos[1] = t[1];
+		data->oldsourcepos[2] = t[2];
+
+		// Get the indicies to the nearest HRTF directions, interpolated between the old position and the new one
+		int nearest[16], nidx = 0;
+		float pos[3], nmax = float(length) / HRTFLEN;
+		for (unsigned int sampleOffset = 0; sampleOffset < length; sampleOffset += HRTFLEN)
 		{
+			pos[0] = (t[0] - o[0]) / nmax*(nidx + 1) + o[0];
+			pos[1] = (t[1] - o[1]) / nmax*(nidx + 1) + o[1];
+			pos[2] = (t[2] - o[2]) / nmax*(nidx + 1) + o[2];
+			nearest[nidx] = mysofa_lookup(sharedData.mylookup[Selper], pos);
 #if _DEBUG
-			// Calculate the source direction in spherical coordinates
-			float azimuth = (fabsf(dir_z) < 0.001f) ? 0.0f : atan2f(dir_x, dir_z);
-			if (azimuth < 0.0f)
-				azimuth += 2.0f * kPI;
-			azimuth = FastClip(azimuth * kRad2Deg, 0.0f, 360.0f);
-			float elevation = atan2f(dir_y, sqrtf(dir_x * dir_x + dir_z * dir_z) + 0.001f) * kRad2Deg;
-			fprintf(sharedData.pConsole, "Requested: (%d, %d); ", (int)azimuth, (int)elevation);
+			pos[0] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx]];
+			pos[1] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx] + 1];
+			pos[2] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx] + 2];
+			mysofa_c2s(pos);
+			fprintf(sharedData.pConsole, "-> (%5.1f, %5.1f)", pos[0], pos[1]);
 #endif
-			// Calculate the source direction in cartesian coordinates for the look-up
-			float t[3];
-			t[0] = dir_z; // Z in Unity is X in SOFA
-			t[1] = dir_x; // X in Unity is Y in SOFA
-			t[2] = dir_y; // Y in Unity is Z in SOFA
-
-			// Get the index to the nearest HRTF direction
-			int nearest = mysofa_lookup(sharedData.mylookup[Selper], t);
-#if _DEBUG
-			fprintf(sharedData.pConsole, "Found: #%d ", nearest); 
-			t[0] = sharedData.mysofa[Selper]->SourcePosition.values[3*nearest];
-			t[1] = sharedData.mysofa[Selper]->SourcePosition.values[3*nearest+1];
-			t[2] = sharedData.mysofa[Selper]->SourcePosition.values[3*nearest+2];
-			mysofa_c2s(t);
-			fprintf(sharedData.pConsole, "(%5.1f, %5.1f)\n", t[0], t[1]);
-#endif
-
-			// Create a pointer to the left-ear HRTF (the right-ear HRTF is right behind the left-ear)
-			UnityComplexNumber *IRL;
-			IRL = sharedData.hrtf[Selper] + nearest * (2 * HRTFLEN) * 2;             // nearest * N * R
-
-			// Copy the HRTFs for both ears to the data array
-			for (int chidx = 1; chidx >= 0; chidx--)		// copy left-ear to ch=1 and right-ear to ch=0
-				for (int n = 0; n < 2 * HRTFLEN; n++)
-				{
-					data->ch[chidx].h[n].re = IRL->re;
-					data->ch[chidx].h[n].im = IRL->im;
-					IRL++;
-				}
+			nidx++;
 		}
+#if _DEBUG
+		fprintf(sharedData.pConsole, "\n");
+#endif
 
-        // From the FMOD documentation:
-        //   A spread angle of 0 makes the stereo sound mono at the point of the 3D emitter.
-        //   A spread angle of 90 makes the left part of the stereo sound place itself at 45 degrees to the left and the right part 45 degrees to the right.
-        //   A spread angle of 180 makes the left part of the stero sound place itself at 90 degrees to the left and the right part 90 degrees to the right.
-        //   A spread angle of 360 makes the stereo sound mono at the opposite speaker location to where the 3D emitter should be located (by moving the left part 180 degrees left and the right part 180 degrees right). So in this case, behind you when the sound should be in front of you!
-        // Note that FMOD performs the spreading and panning in one go. We can't do this here due to the way that impulse-based spatialization works, so we perform the spread calculations on the left/right source signals before they enter the convolution processing.
-        // That way we can still use it to control how the source signal downmixing takes place.
-        float spread = cosf(state->spatializerdata->spread * kPI / 360.0f);
-        float spreadmatrix[2] = { 2.0f - spread, spread };
+		// Create a pointer to the left-ear HRTF (the right-ear HRTF is right behind the left-ear)
+		UnityComplexNumber *IRL;
 
-		float spatialblend = state->spatializerdata->spatialblend;
 		float reverbmix = state->spatializerdata->reverbzonemix;
-		
 		float* reverb = reverbmixbuffer;
-        for (unsigned int sampleOffset = 0; sampleOffset < length; sampleOffset += HRTFLEN)
-        {
-            for (int c = 0; c < 2; c++)
-            {
-                // stereopan is in the [-1; 1] range, this acts the way fmod does it for stereo
-                float stereopan = 1.0f - ((c == 0) ? FastMax(0.0f, state->spatializerdata->stereopan) : FastMax(0.0f, -state->spatializerdata->stereopan));
+		nidx = 0;
+		for (unsigned int sampleOffset = 0; sampleOffset < length; sampleOffset += HRTFLEN)
+		{
 
-                InstanceChannel& ch = data->ch[c];
+			for (int c = 0; c < 2; c++)
+			{
+					// Pointer to the correct HRTF: [nearest * N * R]
+				IRL = sharedData.hrtf[Selper] + nearest[nidx] * (2 * HRTFLEN) * 2 + (2*HRTFLEN*c); 
+					// Pointer to the channel data
+				InstanceChannel& ch = data->ch[c];
 
-                for (int n = 0; n < HRTFLEN; n++)
-                {
-                    float left  = inbuffer[n * 2];
-                    float right = inbuffer[n * 2 + 1];
-                    ch.buffer[n] = ch.buffer[n + HRTFLEN];
-                    ch.buffer[n + HRTFLEN] = left * spreadmatrix[c] + right * spreadmatrix[1 - c];
-                }
+				// Implements Overlap and save
+					// Save the input
+				for (int n = 0; n < HRTFLEN; n++)
+				{
+					ch.buffer[n] = ch.buffer[n + HRTFLEN];    // save the previous buffer
+					ch.buffer[n + HRTFLEN] = inbuffer[n * 2]; // always use left channel
+				}
+					// FT of the input
+				for (int n = 0; n < HRTFLEN * 2; n++)
+				{
+					ch.x[n].re = ch.buffer[n];
+					ch.x[n].im = 0.0f;
+				}
+				FFT::Forward(ch.x, HRTFLEN * 2, false);
+					// spectral multiplication
+				for (int n = 0; n < HRTFLEN * 2; n++)
+					UnityComplexNumber::Mul<float, float, float>(ch.x[n], IRL[n], ch.y[n]);
+					// IF of the result
+				FFT::Backward(ch.y, HRTFLEN * 2, false);
+					// Copy the output to the buffer, discard samples after HRTFLEN
+				for (int n = 0; n < HRTFLEN; n++)
+				{
+					outbuffer[n * 2 + c] = ch.y[n].re;
+					reverb[n * 2 + c] += ch.y[n].re * reverbmix;
+				}
+			}
 
-                for (int n = 0; n < HRTFLEN * 2; n++)
-                {
-                    ch.x[n].re = ch.buffer[n];
-                    ch.x[n].im = 0.0f;
-                }
-
-                FFT::Forward(ch.x, HRTFLEN * 2, false);
-
-                for (int n = 0; n < HRTFLEN * 2; n++)
-                    UnityComplexNumber::Mul<float, float, float>(ch.x[n], ch.h[n], ch.y[n]);
-
-                FFT::Backward(ch.y, HRTFLEN * 2, false);
-
-                for (int n = 0; n < HRTFLEN; n++)
-                {
-                    float s = inbuffer[n * 2 + c] * stereopan;
-                    float y = s + (ch.y[n].re * GAINCORRECTION - s) * spatialblend;
-                    outbuffer[n * 2 + c] = y;
-                    reverb[n * 2 + c] += y * reverbmix;
-                }
-            }
-
-            inbuffer += HRTFLEN * 2;
-            outbuffer += HRTFLEN * 2;
-            reverb += HRTFLEN * 2;
-        }
-
+			inbuffer += HRTFLEN * 2; // HRTFLEN * 2 channels
+			outbuffer += HRTFLEN * 2;
+			reverb += HRTFLEN * 2;
+			nidx++;
+		}
         return UNITY_AUDIODSP_OK;
     }
 }
