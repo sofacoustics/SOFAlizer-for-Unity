@@ -22,6 +22,7 @@ namespace Spatializer
         P_FIXEDVOLUME,
         P_CUSTOMFALLOFF,
 		P_SOFASELECTOR,
+		P_DEBUGLEVEL,
         P_NUM
     };
 
@@ -42,21 +43,10 @@ namespace Spatializer
 		unsigned int mysofaflag[MAX_SOFAS]; // 0: HRTF set not loaded, 1: HRTF loaded and ready for rendering
 		UnityComplexNumber *hrtf[MAX_SOFAS];  // All HRTFs in frequency domain, number of elements = M * R * HRTFLEN * 2
 		FILE *Log;	// logging to the file on load/unload of HRTFs
-#if _DEBUG
 		FILE *pConsole;		// for debugging, use fprintf(pConsole, "my string");
-#endif
 
 		HRTFData()
 		{
-#if _DEBUG
-			// Allocate a console for debugging. Use fprintf(sharedData.pConsole, string); for printing
-			AllocConsole();
-			freopen_s(&pConsole, "CONOUT$", "wb", stdout);
-			fprintf(pConsole, "SOFAlizer %s: SOFA-based spatializer (c) Piotr Majdak, ARI, OeAW\n", SOFALIZER_VERSION);
-#endif
-			fopen_s(&Log, "SOFAlizer.log", "a");
-			fprintf(Log, "SOFAlizer %s: SOFA-based spatializer (c) Piotr Majdak, ARI, OeAW\n", SOFALIZER_VERSION);
-			fclose(Log);
 			for (unsigned int i = 0; i < MAX_SOFAS; i++)
 			{
 				// stamp all files as not loaded and not usable
@@ -70,11 +60,9 @@ namespace Spatializer
 
     struct InstanceChannel
     {
-		UnityComplexNumber h[HRTFLEN * 2] = { 0 };
 		UnityComplexNumber x[HRTFLEN * 2] = { 0 };
         UnityComplexNumber y[HRTFLEN * 2];
 		float buffer[HRTFLEN * 2] = { 0 };
-		float yoverlap[HRTFLEN] = { 0 };
 	};
 
     struct EffectData
@@ -86,12 +74,20 @@ namespace Spatializer
 
 	void LoadSOFAs(UnityAudioEffectState* state)
 	{
-		if (state->samplerate < 8000) return; // terminate if sampling rate below 8 kHz
+
+		// Allocate a console for debugging. Use fprintf(sharedData.pConsole, string); for printing
 #if _DEBUG
+		AllocConsole();
+		freopen_s(&(sharedData.pConsole), "CONOUT$", "wb", stdout);
+		fprintf(sharedData.pConsole, "SOFAlizer %s: SOFA-based spatializer (c) Piotr Majdak, ARI, OeAW\n", SOFALIZER_VERSION);
 		fprintf(sharedData.pConsole, "System sampling rate: %u, Buffer size:%u samples\n", state->samplerate, state->dspbuffersize);
 #endif
 		fopen_s(&(sharedData.Log), "SOFAlizer.log", "a");
+		fprintf(sharedData.Log, "SOFAlizer %s: SOFA-based spatializer (c) Piotr Majdak, ARI, OeAW\n", SOFALIZER_VERSION);
 		fprintf(sharedData.Log, "System sampling rate: %u Hz, Buffer size:%u samples\n", state->samplerate, state->dspbuffersize);
+
+		if (state->samplerate < 8000) return; // terminate if sampling rate below 8 kHz
+
 		// Iterate through the SOFA files
 		for (unsigned int i = 0; i < MAX_SOFAS; i++)
 		{
@@ -109,20 +105,18 @@ namespace Spatializer
 				{
 #if _DEBUG
 					fprintf(sharedData.pConsole, "%s: %u HRTFs, %u samples @ %u Hz. %s, %s, %s.\n",
-						filename, sharedData.mysofa[i]->M, sharedData.mysofa[i]->N, 
-						(unsigned int)(sharedData.mysofa[i]->DataSamplingRate.values[0]),
-					    mysofa_getAttribute(sharedData.mysofa[i]->attributes,"DatabaseName"),
-						mysofa_getAttribute(sharedData.mysofa[i]->attributes, "Title"),
-						mysofa_getAttribute(sharedData.mysofa[i]->attributes, "ListenerShortName")
-						);
+							filename, sharedData.mysofa[i]->M, sharedData.mysofa[i]->N,
+							(unsigned int)(sharedData.mysofa[i]->DataSamplingRate.values[0]),
+							mysofa_getAttribute(sharedData.mysofa[i]->attributes, "DatabaseName"),
+							mysofa_getAttribute(sharedData.mysofa[i]->attributes, "Title"),
+							mysofa_getAttribute(sharedData.mysofa[i]->attributes, "ListenerShortName"));
 #endif
 					fprintf(sharedData.Log, "%s: %u HRTFs, %u samples @ %u Hz. %s, %s, %s.\n",
-						filename, sharedData.mysofa[i]->M, sharedData.mysofa[i]->N,
-						(unsigned int)(sharedData.mysofa[i]->DataSamplingRate.values[0]),
-						mysofa_getAttribute(sharedData.mysofa[i]->attributes, "DatabaseName"),
-						mysofa_getAttribute(sharedData.mysofa[i]->attributes, "Title"),
-						mysofa_getAttribute(sharedData.mysofa[i]->attributes, "ListenerShortName")
-					);
+							filename, sharedData.mysofa[i]->M, sharedData.mysofa[i]->N,
+							(unsigned int)(sharedData.mysofa[i]->DataSamplingRate.values[0]),
+							mysofa_getAttribute(sharedData.mysofa[i]->attributes, "DatabaseName"),
+							mysofa_getAttribute(sharedData.mysofa[i]->attributes, "Title"),
+							mysofa_getAttribute(sharedData.mysofa[i]->attributes, "ListenerShortName"));
 					// Convert to cartesian, initialize the look up
 					mysofa_tocartesian(sharedData.mysofa[i]);
 					sharedData.mylookup[i] = mysofa_lookup_init(sharedData.mysofa[i]);
@@ -187,7 +181,7 @@ namespace Spatializer
 				}
 				else
 				{
-#if _DEBUG					
+#if _DEBUG
 					fprintf(sharedData.pConsole, "%s: Check failed!\n", filename);
 #endif
 					fprintf(sharedData.Log, "%s: Check failed!\n", filename);
@@ -204,7 +198,7 @@ namespace Spatializer
 
 	}
 
-	void UnloadSOFAs()
+	void UnloadSOFAs(void)
 	{
 #if _DEBUG
 		fprintf(sharedData.pConsole, "Unloaded!");
@@ -240,6 +234,7 @@ namespace Spatializer
         RegisterParameter(definition, "Fixed Volume", "", 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, P_FIXEDVOLUME, "Fixed volume amount");
         RegisterParameter(definition, "Custom Falloff", "", 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, P_CUSTOMFALLOFF, "Custom volume falloff amount (logarithmic)");
 		RegisterParameter(definition, "SOFA Selector", "", 0.0f, MAX_SOFAS-1, 0.0f, 1.0f, 1.0f, P_SOFASELECTOR, "HRTF Selector");
+		RegisterParameter(definition, "Debug Console", "", 0.0f, 2.0f, 2.0f, 1.0f, 1.0f, P_DEBUGLEVEL, "Level of debugging information to the console (0: nothing; 1: load/unload; 2: real time)");
         definition.flags |= UnityAudioEffectDefinitionFlags_IsSpatializer;
         return numparams;
     }
@@ -262,7 +257,6 @@ namespace Spatializer
         if (IsHostCompatible(state))
             state->spatializerdata->distanceattenuationcallback = DistanceAttenuationCallback;
         InitParametersFromDefinitions(InternalRegisterEffectDefinition, effectdata->p);
-
 		// Load all SOFA files
 		if (0 == instanceCounter) {
 			LoadSOFAs(state);
@@ -274,9 +268,9 @@ namespace Spatializer
     }
 
     UNITY_AUDIODSP_RESULT UNITY_AUDIODSP_CALLBACK ReleaseCallback(UnityAudioEffectState* state)
-    {
-        EffectData* data = state->GetEffectData<EffectData>();
-        delete data;
+    {		
+		EffectData* data = state->GetEffectData<EffectData>();
+		delete data;
 
 		instanceCounter--;
 		
@@ -340,28 +334,33 @@ namespace Spatializer
         float dir_z = m[2] * px + m[6] * py + m[10] * pz + m[14];
 
 		EffectData* data = state->GetEffectData<EffectData>();
-
 		unsigned int Selper = (unsigned int)(data->p[P_SOFASELECTOR]);
+		unsigned int debug = (unsigned int)(data->p[P_DEBUGLEVEL]);
+
 #if _DEBUG
-		fprintf(sharedData.pConsole, "Set: #%d; ", (int)Selper);
+		if (debug>1) fprintf(sharedData.pConsole, "Set: #%d; ", (int)Selper);
 #endif
+
 		if(sharedData.mysofaflag[Selper] == 0)
 		{
 #if _DEBUG
-			fprintf(sharedData.pConsole, "(not loaded)\n");
+			if (debug>1) fprintf(sharedData.pConsole, "(not loaded)\n");
 #endif
+
 			// Set filters to zero (mute)
 			memset(outbuffer, 0, length * outchannels * sizeof(float));
 			return UNITY_AUDIODSP_OK;
 		}
-#if _DEBUG
-		// Calculate the source direction in spherical coordinates
-		float azimuth = (fabsf(dir_z) < 0.001f) ? 0.0f : atan2f(dir_x, dir_z);
-		if (azimuth < 0.0f)
-			azimuth += 2.0f * kPI;
-		azimuth = FastClip(azimuth * kRad2Deg, 0.0f, 360.0f);
-		float elevation = atan2f(dir_y, sqrtf(dir_x * dir_x + dir_z * dir_z) + 0.001f) * kRad2Deg;
-		fprintf(sharedData.pConsole, "Requested: (%d, %d); ", (int)azimuth, (int)elevation);
+			// Print the source direction in spherical coordinates
+#if _DEBUG				
+		if (debug > 1) {
+			float azimuth = (fabsf(dir_z) < 0.001f) ? 0.0f : atan2f(dir_x, dir_z);
+			if (azimuth < 0.0f)
+				azimuth += 2.0f * kPI;
+			azimuth = FastClip(azimuth * kRad2Deg, 0.0f, 360.0f);
+			float elevation = atan2f(dir_y, sqrtf(dir_x * dir_x + dir_z * dir_z) + 0.001f) * kRad2Deg;
+			fprintf(sharedData.pConsole, "Requested: (%d, %d); ", (int)azimuth, (int)elevation);
+		}
 #endif
 		// Calculate the source direction in cartesian coordinates
 		float t[3], o[3];
@@ -388,18 +387,19 @@ namespace Spatializer
 			pos[2] = (t[2] - o[2]) / nmax*(nidx + 1) + o[2];
 			nearest[nidx] = mysofa_lookup(sharedData.mylookup[Selper], pos);
 #if _DEBUG
-			pos[0] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx]];
-			pos[1] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx] + 1];
-			pos[2] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx] + 2];
-			mysofa_c2s(pos);
-			fprintf(sharedData.pConsole, "-> (%5.1f, %5.1f)", pos[0], pos[1]);
+			if (debug > 1) {
+				pos[0] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx]];
+				pos[1] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx] + 1];
+				pos[2] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx] + 2];
+				mysofa_c2s(pos);
+				fprintf(sharedData.pConsole, "-> (%5.1f, %5.1f)", pos[0], pos[1]);
+			}
 #endif
 			nidx++;
 		}
 #if _DEBUG
-		fprintf(sharedData.pConsole, "\n");
+		if (debug>1) fprintf(sharedData.pConsole, "\n");
 #endif
-
 		// Create a pointer to the left-ear HRTF (the right-ear HRTF is right behind the left-ear)
 		UnityComplexNumber *IRL;
 
@@ -408,7 +408,6 @@ namespace Spatializer
 		nidx = 0;
 		for (unsigned int sampleOffset = 0; sampleOffset < length; sampleOffset += HRTFLEN)
 		{
-
 			for (int c = 0; c < 2; c++)
 			{
 					// Pointer to the correct HRTF: [nearest * N * R]

@@ -46,8 +46,9 @@ History:
 
 Version 1.2.0
 =============
-Interpolation between the new and old position for smooth movement of the listener. 
-Major clean up of the code. 
+* Interpolation between the new and old position for a smooth movement of the listener. 
+* Major clean up of the code. 
+* Multiple Debug levels: 1: only load/unload, 2: real time information
 
 Version 1.1.0
 =============
