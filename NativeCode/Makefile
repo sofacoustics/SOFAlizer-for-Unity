@@ -24,8 +24,7 @@ Plugin_TeeDee.cpp \
 Plugin_Teleport.cpp \
 Plugin_TubeResonator.cpp \
 Plugin_Vocoder.cpp \
-Plugin_WahWah.cpp \
-hrtftable.cpp
+Plugin_WahWah.cpp 
 OBJS=$(SRCS:.cpp=*.o)
 OUTPUT=libAudioPluginDemo.so
 CXXFLAGS=-I. -O2 -fPIC

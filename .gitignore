@@ -1,0 +1,40 @@
+=============== 
+Unity generated
+===============
+Temp/
+Library/
+
+=====================================
+Visual Studio / MonoDevelop generated
+=====================================
+ExportedObj/
+obj/
+*.svd
+*.userprefs
+/*.csproj
+*.pidb
+*.suo
+/*.sln
+*.user
+*.unityproj
+*.booproj
+.vs
+build
+/NativeCode/VisualStudio/AudioPluginSOFA.VC.db
+/NativeCode/VisualStudio/AudioPluginDemo.VC.db
+
+
+============
+OS generated
+============
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+HRTFs
+Logs
+/SOFAlizer.log
+/Packages/manifest.json
