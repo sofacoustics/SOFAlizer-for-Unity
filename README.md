@@ -44,6 +44,10 @@ Acknowledgements:
 History:
 --------
 
+Version 1.2.1
+=============
+nothing here yet...
+
 Version 1.2.0
 =============
 * Interpolation between the new and old position for a smooth movement of the listener. 
