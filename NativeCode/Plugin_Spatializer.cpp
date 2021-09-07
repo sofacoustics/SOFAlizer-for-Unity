@@ -1,16 +1,18 @@
 // SOFAlizer - (c) Acoustics Research Institute
 
-// Authors: Piotr Majdak, Claudia Jenny
+// Authors: Piotr Majdak, Claudia Jenny, Michael Mihocic
 // Based on Plugin_Spatializer from the package "Native Audio Plugin SDK"
 // Licensed under EUPL, see the license file
 // Uses libmysofa (Symonics GmbH, Christian Hoene)
+// Variable _DEBUG is true when compiler is set to Debug mode
 
 // Please note that this will only work on Unity 5.2 or higher.
 
-#define SOFALIZER_VERSION "1.2.0" // SOFAlizer version
+#define SOFALIZER_VERSION "1.3.0" // SOFAlizer version
 
 #include "AudioPluginUtil.h"
-#include "mysofa.h"  // include libmysofa by, Copyright (c) 2016-2017, Symonics GmbH, Christian Hoene
+#include "mysofa.h"  // include libmysofa by, Copyright (c) 2016-2021, Symonics GmbH, Christian Hoene
+#include <ctime>
 
 extern float reverbmixbuffer[];
 
@@ -74,16 +76,25 @@ namespace Spatializer
 
 	void LoadSOFAs(UnityAudioEffectState* state)
 	{
+		// time
+		char cur_time[128];
+		time_t      t;
+		struct tm* ptm;
+		t = time(NULL);
+		ptm = localtime(&t);
+		strftime(cur_time, 128, "%Y-%m-%d %H:%M:%S", ptm);
 
 		// Allocate a console for debugging. Use fprintf(sharedData.pConsole, string); for printing
 #if _DEBUG
 		AllocConsole();
 		freopen_s(&(sharedData.pConsole), "CONOUT$", "wb", stdout);
-		fprintf(sharedData.pConsole, "SOFAlizer %s: SOFA-based spatializer (c) Piotr Majdak, ARI, OeAW\n", SOFALIZER_VERSION);
+		fprintf(sharedData.pConsole, "SOFAlizer %s: SOFA-based spatializer (c) Piotr Majdak & Michael Mihocic, ARI, OeAW\n", SOFALIZER_VERSION);
+		fprintf(sharedData.pConsole, "%s\n", cur_time);
 		fprintf(sharedData.pConsole, "System sampling rate: %u, Buffer size:%u samples\n", state->samplerate, state->dspbuffersize);
 #endif
 		fopen_s(&(sharedData.Log), "SOFAlizer.log", "a");
-		fprintf(sharedData.Log, "SOFAlizer %s: SOFA-based spatializer (c) Piotr Majdak, ARI, OeAW\n", SOFALIZER_VERSION);
+		fprintf(sharedData.Log, "SOFAlizer %s: SOFA-based spatializer (c) Piotr Majdak & Michael Mihocic, ARI, OeAW\n", SOFALIZER_VERSION);
+		fprintf(sharedData.Log, "%s\n", cur_time);
 		fprintf(sharedData.Log, "System sampling rate: %u Hz, Buffer size:%u samples\n", state->samplerate, state->dspbuffersize);
 
 		if (state->samplerate < 8000) return; // terminate if sampling rate below 8 kHz
@@ -201,7 +212,7 @@ namespace Spatializer
 	void UnloadSOFAs(void)
 	{
 #if _DEBUG
-		fprintf(sharedData.pConsole, "Unloaded!");
+		fprintf(sharedData.pConsole, "Unloaded!\n\n");
 #endif
 		fprintf(sharedData.Log, "Unloaded! **************************************************************************\n\n");
 		fclose(sharedData.Log);
