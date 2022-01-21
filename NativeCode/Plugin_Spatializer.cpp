@@ -8,7 +8,7 @@
 
 // Please note that this will only work on Unity 5.2 or higher.
 
-#define SOFALIZER_VERSION "1.3.0" // SOFAlizer version
+#define SOFALIZER_VERSION "1.4.0-dev" // SOFAlizer version
 
 #include "AudioPluginUtil.h"
 #include "mysofa.h"  // include libmysofa by, Copyright (c) 2016-2021, Symonics GmbH, Christian Hoene
@@ -25,7 +25,8 @@ namespace Spatializer
         P_CUSTOMFALLOFF,
 		P_SOFASELECTOR,
 		P_DEBUGLEVEL,
-        P_NUM
+		P_INGORELISTENERORIENTATION,
+		P_NUM
     };
 
     const int HRTFLEN = 128; // currently max size of the HRTFs
@@ -246,7 +247,8 @@ namespace Spatializer
         RegisterParameter(definition, "Custom Falloff", "", 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, P_CUSTOMFALLOFF, "Custom volume falloff amount (logarithmic)");
 		RegisterParameter(definition, "SOFA Selector", "", 0.0f, MAX_SOFAS-1, 0.0f, 1.0f, 1.0f, P_SOFASELECTOR, "HRTF Selector");
 		RegisterParameter(definition, "Debug Console", "", 0.0f, 2.0f, 2.0f, 1.0f, 1.0f, P_DEBUGLEVEL, "Level of debugging information to the console (0: nothing; 1: load/unload; 2: real time)");
-        definition.flags |= UnityAudioEffectDefinitionFlags_IsSpatializer;
+		RegisterParameter(definition, "Ign List Orien", "", 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, P_INGORELISTENERORIENTATION, "0..Use actual listener orientation; 1..Ignore actual listener orientation");
+		definition.flags |= UnityAudioEffectDefinitionFlags_IsSpatializer;
         return numparams;
     }
 
@@ -347,6 +349,7 @@ namespace Spatializer
 		EffectData* data = state->GetEffectData<EffectData>();
 		unsigned int Selper = (unsigned int)(data->p[P_SOFASELECTOR]);
 		unsigned int debug = (unsigned int)(data->p[P_DEBUGLEVEL]);
+		unsigned int IgnoreListenerOrientation = (unsigned int)(data->p[P_INGORELISTENERORIENTATION]);
 
 #if _DEBUG
 		if (debug>1) fprintf(sharedData.pConsole, "Set: #%d; ", (int)Selper);

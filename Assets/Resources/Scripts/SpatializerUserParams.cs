@@ -14,7 +14,7 @@ public class SpatializerUserParams : MonoBehaviour
     public float CustomRolloff = 0.0f;
 	public float SOFASelector = 0.0f;
     public float DebugConsole = 0.0f;
-    public float Mode = 0.0f;
+    public float IgnoreListenerOrientation = 0.0f;
 //#endif
 
     void Start()
@@ -30,13 +30,13 @@ public class SpatializerUserParams : MonoBehaviour
         source.SetSpatializerFloat(2, CustomRolloff);
         source.SetSpatializerFloat(3, SOFASelector);
         source.SetSpatializerFloat(4, DebugConsole);
-        source.SetSpatializerFloat(5, Mode);
+        source.SetSpatializerFloat(5, IgnoreListenerOrientation);
         source.GetSpatializerFloat(0, out DistanceAttn); // Get back clipped parameters from plugin
 		source.GetSpatializerFloat(1, out FixedVolume);
 		source.GetSpatializerFloat(2, out CustomRolloff);
 		source.GetSpatializerFloat(3, out SOFASelector);        
         source.GetSpatializerFloat(4, out DebugConsole);
-        source.GetSpatializerFloat(5, out Mode);
+        source.GetSpatializerFloat(5, out IgnoreListenerOrientation);
         source.spatialize = EnableSpatialization;
  //       #endif
 
