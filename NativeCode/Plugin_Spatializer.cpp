@@ -334,23 +334,30 @@ namespace Spatializer
 
         static const float kRad2Deg = 180.0f / kPI;
 
-        float* m = state->spatializerdata->listenermatrix;
-        float* s = state->spatializerdata->sourcematrix;
-
-        // Currently we ignore source orientation and only use the position
-        float px = s[12];
-        float py = s[13];
-        float pz = s[14];
-
-        float dir_x = m[0] * px + m[4] * py + m[8] * pz + m[12];
-        float dir_y = m[1] * px + m[5] * py + m[9] * pz + m[13];
-        float dir_z = m[2] * px + m[6] * py + m[10] * pz + m[14];
-
+		// Get plugin parameters
 		EffectData* data = state->GetEffectData<EffectData>();
 		unsigned int Selper = (unsigned int)(data->p[P_SOFASELECTOR]);
 		unsigned int debug = (unsigned int)(data->p[P_DEBUGLEVEL]);
 		unsigned int IgnoreListenerOrientation = (unsigned int)(data->p[P_INGORELISTENERORIENTATION]);
 
+		// Get Listener and Source spatial data
+		float* m = state->spatializerdata->listenermatrix;
+		float* s = state->spatializerdata->sourcematrix;
+
+		// Calculate the direction vector of the required HRTF
+		float dir_x, dir_y, dir_z; 
+		if (IgnoreListenerOrientation)
+		{	// Ignore the listener orientation (and currently the position as well)
+			dir_x = s[12];
+			dir_y = s[13];
+			dir_z = s[14];
+		}
+		else
+		{	// Consider the listener orientation, ignoring the source orientation (=directivity)
+			dir_x = m[0] * s[12] + m[4] * s[13] + m[8] * s[14] + m[12];
+			dir_y = m[1] * s[12] + m[5] * s[13] + m[9] * s[14] + m[13];
+			dir_z = m[2] * s[12] + m[6] * s[13] + m[10] * s[14] + m[14];
+		}
 #if _DEBUG
 		if (debug>1) fprintf(sharedData.pConsole, "Set: #%d; ", (int)Selper);
 #endif
@@ -373,7 +380,10 @@ namespace Spatializer
 				azimuth += 2.0f * kPI;
 			azimuth = FastClip(azimuth * kRad2Deg, 0.0f, 360.0f);
 			float elevation = atan2f(dir_y, sqrtf(dir_x * dir_x + dir_z * dir_z) + 0.001f) * kRad2Deg;
-			fprintf(sharedData.pConsole, "Requested: (%d, %d); ", (int)azimuth, (int)elevation);
+			if (IgnoreListenerOrientation)
+				fprintf(sharedData.pConsole, "Source Direction: (%d, %d); ", (int)azimuth, (int)elevation);
+			else
+				fprintf(sharedData.pConsole, "Source-Listener Direction: (%d, %d); ", (int)azimuth, (int)elevation);
 		}
 #endif
 		// Calculate the source direction in cartesian coordinates
