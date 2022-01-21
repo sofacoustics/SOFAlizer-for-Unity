@@ -1,8 +1,8 @@
-# SOFAlizer for Unity 1.3.0
+# SOFAlizer for Unity 1.4.0
 
 SOFAlizer is a SOFA-based audio spatializer for Unity. It is a Unity [native plugin](https://docs.unity3d.com/Manual/NativePlugins.html). It loads sets of spatial filters so-called [HRTFs](https://en.wikipedia.org/wiki/Head-related_transfer_function) stored in [SOFA](https://www.sofaconventions.org/) files and renders spatial audio based on a selected HRTF set. The output is a binaural signal intended to be listened to via headphones. 
 
-Currently only Windows is supported.
+Currently only Windows is supported. Tested with Unity 2021.2.8f1, compiled with MS VS 2019.
 
 Installation:
 -------------
@@ -26,12 +26,20 @@ On "Run" of the scene, SOFAlizer:
 * Normalizes each HRTF set relative to the HRTF for the frontal position. 
 * Crops the HRTFs to the length of 256 samples. 
 * Transforms all impulse responses to the spectral domain for fast convolution in real-time.
+* Creates SOFAlizer.log with the information of the loaded HRTF sets. In order to change the loaded HRTF sets, stop the scene rendering, replace one or more of the SOFA files, and re-run the scene.
 
-In the scene, the parameter "SOFA Selector" selects the index of the processed HRTF set. The selection of the loaded HRTF sets can be done at any time in real-time. If a non-loaded HRTF set is selected, the audio will be muted.
+Scene parameters: 
+* SOFA Selector: selects the index of the processed HRTF set. The selection of the loaded HRTF sets can be done at any time in real-time. If a non-loaded HRTF set is selected, the audio will be muted.
+* Debug: determines the level of debug information shown in the console (only available if compiled in the debug mode!):
+  * 0 ... loading information only
+  * 1 ... show the active HRTF set
+  * 2 ... show the requested and the actually used HRTF directions
+  * 4 ... show the actually used trajectory 
+  The flags can be logically combined, i.e., 7 shows everything. 
+* IgnoreListenerOrientation: if non-zero, the listener orientation is ignored when determining the HRTF direction, i.e., only the source position is considered. 
 
-In order to change the loaded HRTFs, stop the scene rendering, replace one or more of the SOFA files, and re-run the scene. 
 
-Log file SOFAlizer.log will be created where the loaded files and their transformations are logged.
+
 
 **Enjoy!**
 
@@ -41,8 +49,15 @@ Acknowledgements:
 
 * Christian Hoene for the great libmysofa library for easy reading SOFA files: https://github.com/hoene/libmysofa
 
+
 History:
 --------
+
+Version 1.4.0
+=============
+* IgnoreListenerOrientation: added
+* Debug: interpretation changed to be able to use as a combination of debug flags
+* Compiler warnings removed
 
 Version 1.3.0
 =============
