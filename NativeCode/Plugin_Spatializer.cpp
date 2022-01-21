@@ -14,6 +14,8 @@
 #include "mysofa.h"  // include libmysofa by, Copyright (c) 2016-2021, Symonics GmbH, Christian Hoene
 #include <ctime>
 
+#pragma warning(disable : 4996) // disable warnings about using unsafe functions
+
 extern float reverbmixbuffer[];
 
 namespace Spatializer
@@ -40,13 +42,13 @@ namespace Spatializer
 	{
 
 	public:
-		MYSOFA_HRTF *mysofa[MAX_SOFAS];		// stores the SOFA structure
-		MYSOFA_LOOKUP *mylookup[MAX_SOFAS];    // for the lookup
-		MYSOFA_NEIGHBORHOOD *myneighborhood[MAX_SOFAS];  // for the lookup
-		unsigned int mysofaflag[MAX_SOFAS]; // 0: HRTF set not loaded, 1: HRTF loaded and ready for rendering
-		UnityComplexNumber *hrtf[MAX_SOFAS];  // All HRTFs in frequency domain, number of elements = M * R * HRTFLEN * 2
-		FILE *Log;	// logging to the file on load/unload of HRTFs
-		FILE *pConsole;		// for debugging, use fprintf(pConsole, "my string");
+		MYSOFA_HRTF* mysofa[MAX_SOFAS]{};		// stores the SOFA structure
+		MYSOFA_LOOKUP* mylookup[MAX_SOFAS]{};    // for the lookup
+		MYSOFA_NEIGHBORHOOD* myneighborhood[MAX_SOFAS]{};  // for the lookup
+		unsigned int mysofaflag[MAX_SOFAS]{}; // 0: HRTF set not loaded, 1: HRTF loaded and ready for rendering
+		UnityComplexNumber* hrtf[MAX_SOFAS]{};  // All HRTFs in frequency domain, number of elements = M * R * HRTFLEN * 2
+		FILE* Log{};	// logging to the file on load/unload of HRTFs
+		FILE* pConsole{};		// for debugging, use fprintf(pConsole, "my string");
 
 		HRTFData()
 		{
@@ -70,9 +72,9 @@ namespace Spatializer
 
     struct EffectData
     {
-        float p[P_NUM];
-        InstanceChannel ch[2];
-		float oldsourcepos[3];
+		float p[P_NUM]{};
+		InstanceChannel ch[2]{};
+		float oldsourcepos[3]{};
     };
 
 	void LoadSOFAs(UnityAudioEffectState* state)
@@ -328,8 +330,8 @@ namespace Spatializer
         if (inchannels != 2 || outchannels != 2 ||
             !IsHostCompatible(state) || state->spatializerdata == NULL)
         {
-            memcpy(outbuffer, inbuffer, length * outchannels * sizeof(float));
-            return UNITY_AUDIODSP_OK; 
+            memcpy(outbuffer, inbuffer, (size_t)length * outchannels * sizeof(float));
+            return UNITY_AUDIODSP_OK;
         }
 
         static const float kRad2Deg = 180.0f / kPI;
@@ -365,7 +367,7 @@ namespace Spatializer
 			if (debug & 1) fprintf(sharedData.pConsole, "Active HRTF Set: #%d (not loaded)\n", (int)Selper);
 #endif
 			// Set filters to zero (mute)
-			memset(outbuffer, 0, length * outchannels * sizeof(float));
+			memset(outbuffer, 0, (size_t) length * outchannels * sizeof(float));
 			return UNITY_AUDIODSP_OK;
 		}
 #if _DEBUG		
@@ -400,7 +402,7 @@ namespace Spatializer
 		data->oldsourcepos[2] = t[2];
 
 		// Get the indicies to the nearest HRTF directions, interpolated between the old position and the new one
-		int nearest[16], nidx = 0;
+		int nearest[16]{}, nidx = 0;
 		float pos[3], nmax = float(length) / HRTFLEN;
 		for (unsigned int sampleOffset = 0; sampleOffset < length; sampleOffset += HRTFLEN)
 		{
@@ -431,7 +433,7 @@ namespace Spatializer
 			for (int c = 0; c < 2; c++)
 			{
 					// Pointer to the correct HRTF: [nearest * N * R]
-				IRL = sharedData.hrtf[Selper] + nearest[nidx] * (2 * HRTFLEN) * 2 + (2*HRTFLEN*c); 
+				IRL = sharedData.hrtf[Selper] + (size_t) nearest[nidx] * (2 * HRTFLEN) * 2 + 2*(size_t)HRTFLEN*c;
 					// Pointer to the channel data
 				InstanceChannel& ch = data->ch[c];
 
@@ -470,6 +472,7 @@ namespace Spatializer
 
 #if _DEBUG
 		if (debug & 2) {
+			if (nidx <1 ) nidx = 1;
 			pos[0] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx-1]];
 			pos[1] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx-1] + 1];
 			pos[2] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx-1] + 2];
