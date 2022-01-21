@@ -202,9 +202,9 @@ namespace Spatializer
 			else
 			{
 #if _DEBUG
-				fprintf(sharedData.pConsole, "%s: Can't load file\n", filename);
+				fprintf(sharedData.pConsole, "%s: Can't load, error code: %d (%s)\n", filename, err, strerror(err));
 #endif
-				fprintf(sharedData.Log, "%s: Can't load file\n", filename);
+				fprintf(sharedData.Log, "%s: Can't load, error code: %d (%s)\n", filename, err, strerror(err));
 			}
 		}//iterate through all sofa files
 
@@ -246,7 +246,7 @@ namespace Spatializer
         RegisterParameter(definition, "Fixed Volume", "", 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, P_FIXEDVOLUME, "Fixed volume amount");
         RegisterParameter(definition, "Custom Falloff", "", 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, P_CUSTOMFALLOFF, "Custom volume falloff amount (logarithmic)");
 		RegisterParameter(definition, "SOFA Selector", "", 0.0f, MAX_SOFAS-1, 0.0f, 1.0f, 1.0f, P_SOFASELECTOR, "HRTF Selector");
-		RegisterParameter(definition, "Debug Console", "", 0.0f, 2.0f, 2.0f, 1.0f, 1.0f, P_DEBUGLEVEL, "Level of debugging information to the console (0: nothing; 1: load/unload; 2: real time)");
+		RegisterParameter(definition, "Debug Console", "", 0.0f, 128.0f, 0.0f, 1.0f, 1.0f, P_DEBUGLEVEL, "Level of debugging information to the console");
 		RegisterParameter(definition, "Ign List Orien", "", 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, P_INGORELISTENERORIENTATION, "0..Use actual listener orientation; 1..Ignore actual listener orientation");
 		definition.flags |= UnityAudioEffectDefinitionFlags_IsSpatializer;
         return numparams;
@@ -358,32 +358,30 @@ namespace Spatializer
 			dir_y = m[1] * s[12] + m[5] * s[13] + m[9] * s[14] + m[13];
 			dir_z = m[2] * s[12] + m[6] * s[13] + m[10] * s[14] + m[14];
 		}
-#if _DEBUG
-		if (debug>1) fprintf(sharedData.pConsole, "Set: #%d; ", (int)Selper);
-#endif
 
 		if(sharedData.mysofaflag[Selper] == 0)
 		{
 #if _DEBUG
-			if (debug>1) fprintf(sharedData.pConsole, "(not loaded)\n");
+			if (debug & 1) fprintf(sharedData.pConsole, "Active HRTF Set: #%d (not loaded)\n", (int)Selper);
 #endif
-
 			// Set filters to zero (mute)
 			memset(outbuffer, 0, length * outchannels * sizeof(float));
 			return UNITY_AUDIODSP_OK;
 		}
-			// Print the source direction in spherical coordinates
-#if _DEBUG				
-		if (debug > 1) {
+#if _DEBUG		
+		if (debug & 1) fprintf(sharedData.pConsole, "Active HRTF Set: #%d loaded. ", (int)Selper);
+
+		// Print the source direction in spherical coordinates
+		if (debug & 2) {
 			float azimuth = (fabsf(dir_z) < 0.001f) ? 0.0f : atan2f(dir_x, dir_z);
 			if (azimuth < 0.0f)
 				azimuth += 2.0f * kPI;
 			azimuth = FastClip(azimuth * kRad2Deg, 0.0f, 360.0f);
 			float elevation = atan2f(dir_y, sqrtf(dir_x * dir_x + dir_z * dir_z) + 0.001f) * kRad2Deg;
 			if (IgnoreListenerOrientation)
-				fprintf(sharedData.pConsole, "Source Direction: (%d, %d); ", (int)azimuth, (int)elevation);
+				fprintf(sharedData.pConsole, "Source Direction (%d, %d) ", (int)azimuth, (int)elevation);
 			else
-				fprintf(sharedData.pConsole, "Source-Listener Direction: (%d, %d); ", (int)azimuth, (int)elevation);
+				fprintf(sharedData.pConsole, "Source-Listener Direction (%d, %d) ", (int)azimuth, (int)elevation);
 		}
 #endif
 		// Calculate the source direction in cartesian coordinates
@@ -411,7 +409,7 @@ namespace Spatializer
 			pos[2] = (t[2] - o[2]) / nmax*(nidx + 1) + o[2];
 			nearest[nidx] = mysofa_lookup(sharedData.mylookup[Selper], pos);
 #if _DEBUG
-			if (debug > 1) {
+			if (debug & 4) {
 				pos[0] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx]];
 				pos[1] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx] + 1];
 				pos[2] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx] + 2];
@@ -421,9 +419,7 @@ namespace Spatializer
 #endif
 			nidx++;
 		}
-#if _DEBUG
-		if (debug>1) fprintf(sharedData.pConsole, "\n");
-#endif
+
 		// Create a pointer to the left-ear HRTF (the right-ear HRTF is right behind the left-ear)
 		UnityComplexNumber *IRL;
 
@@ -471,6 +467,17 @@ namespace Spatializer
 			reverb += HRTFLEN * 2;
 			nidx++;
 		}
+
+#if _DEBUG
+		if (debug & 2) {
+			pos[0] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx-1]];
+			pos[1] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx-1] + 1];
+			pos[2] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx-1] + 2];
+			mysofa_c2s(pos);
+			fprintf(sharedData.pConsole, " -> HRTF found for (%5.1f, %5.1f)", pos[0], pos[1]);
+		}
+		if (debug > 0) fprintf(sharedData.pConsole, "\n");
+#endif
         return UNITY_AUDIODSP_OK;
     }
 }
