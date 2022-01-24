@@ -9,8 +9,9 @@ Installation:
 
 Compile SOFAlizer DLL:
 * Start NativeCode\VisualStudio\AudioPluginSOFA.sln
-* Select x64, Release
+* Select x64, Release or Debug
 * Rebuild AudioPluginSOFA 
+* Adapt or install Windows SDK version if an error occurs during compilation. (Properties)
 
 Start the scene:
 * In Unity start the scene: Assets\SampleScene.unity
