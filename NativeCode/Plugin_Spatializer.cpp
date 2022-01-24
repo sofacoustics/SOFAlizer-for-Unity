@@ -8,7 +8,7 @@
 
 // Please note that this will only work on Unity 5.2 or higher.
 
-#define SOFALIZER_VERSION "1.4.1-dev" // SOFAlizer version
+#define SOFALIZER_VERSION "1.4.1" // SOFAlizer version
 
 #include "AudioPluginUtil.h"
 #include "mysofa.h"  // include libmysofa by, Copyright (c) 2016-2021, Symonics GmbH, Christian Hoene
@@ -403,7 +403,7 @@ namespace Spatializer
 
 		// Get the indicies to the nearest HRTF directions, interpolated between the old position and the new one
 		int nearest[16]{}, nidx = 0;
-		float pos[3], nmax = float(length) / HRTFLEN;
+		float pos[3], nmax = float(length) / (HRTFLEN * 2);
 		for (unsigned int sampleOffset = 0; sampleOffset < length; sampleOffset += HRTFLEN)
 		{
 			pos[0] = (t[0] - o[0]) / nmax*(nidx + 1) + o[0];

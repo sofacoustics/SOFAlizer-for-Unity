@@ -59,6 +59,7 @@ History:
 Version 1.4.1
 =============
 * Debug 8 added to show the audio block size
+* Bug fix in calculating the trajectory
 
 Version 1.4.0
 =============
