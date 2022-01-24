@@ -35,7 +35,8 @@ Scene parameters:
   * 1 ... show the active HRTF set
   * 2 ... show the requested and the actually used HRTF directions
   * 4 ... show the actually used trajectory 
-  The flags can be logically combined, i.e., 7 shows everything. 
+  * 8 ... show the audio block size in samples
+  The flags can be logically combined, i.e., 15 shows everything. 
 * IgnoreListenerOrientation: if non-zero, the listener orientation is ignored when determining the HRTF direction, i.e., only the source position is considered. 
 
 
@@ -52,6 +53,11 @@ Acknowledgements:
 
 History:
 --------
+
+
+Version 1.4.1
+=============
+* Debug 8 added to show the audio block size
 
 Version 1.4.0
 =============

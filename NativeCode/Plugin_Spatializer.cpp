@@ -149,7 +149,7 @@ namespace Spatializer
 						}
 
 						// Scale HRTFs to have a normalized amplitude relative to the frontal position
-						mysofa_loudness(sharedData.mysofa[i]);
+						// mysofa_loudness(sharedData.mysofa[i]);
 
 						// Determine the final length of each IR
 						unsigned int length; // length of the IRs to be copied 
@@ -478,6 +478,9 @@ namespace Spatializer
 			pos[2] = sharedData.mysofa[Selper]->SourcePosition.values[3 * nearest[nidx-1] + 2];
 			mysofa_c2s(pos);
 			fprintf(sharedData.pConsole, " -> HRTF found for (%5.1f, %5.1f)", pos[0], pos[1]);
+		}
+		if (debug & 8) {
+			fprintf(sharedData.pConsole, "Audio block size: %u",length);
 		}
 		if (debug > 0) fprintf(sharedData.pConsole, "\n");
 #endif
