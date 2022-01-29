@@ -1,4 +1,4 @@
-# SOFAlizer for Unity 1.4.1
+# SOFAlizer for Unity 1.4.2
 
 SOFAlizer is a SOFA-based audio spatializer for Unity. It is a Unity [native plugin](https://docs.unity3d.com/Manual/NativePlugins.html). It loads sets of spatial filters so-called [HRTFs](https://en.wikipedia.org/wiki/Head-related_transfer_function) stored in [SOFA](https://www.sofaconventions.org/) files and renders spatial audio based on a selected HRTF set. The output is a binaural signal intended to be listened to via headphones. 
 
@@ -55,6 +55,9 @@ Acknowledgements:
 History:
 --------
 
+Version 1.4.2
+=============
+* Automatic gain normalization on HRTF-set load re-added (was removed in v1.4.0)
 
 Version 1.4.1
 =============
