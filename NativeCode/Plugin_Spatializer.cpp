@@ -8,7 +8,7 @@
 
 // Please note that this will only work on Unity 5.2 or higher.
 
-#define SOFALIZER_VERSION "1.4.2-dev" // SOFAlizer version
+#define SOFALIZER_VERSION "1.4.2" // SOFAlizer version
 
 #include "AudioPluginUtil.h"
 #include "mysofa.h"  // include libmysofa by, Copyright (c) 2016-2021, Symonics GmbH, Christian Hoene
@@ -149,7 +149,7 @@ namespace Spatializer
 						}
 
 						// Scale HRTFs to have a normalized amplitude relative to the frontal position
-						// mysofa_loudness(sharedData.mysofa[i]);
+						mysofa_loudness(sharedData.mysofa[i]);
 
 						// Determine the final length of each IR
 						unsigned int length; // length of the IRs to be copied 
