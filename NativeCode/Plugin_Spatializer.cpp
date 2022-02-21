@@ -8,7 +8,7 @@
 
 // Please note that this will only work on Unity 5.2 or higher.
 
-#define SOFALIZER_VERSION "1.4.3-dev" // SOFAlizer version
+#define SOFALIZER_VERSION "1.5.0" // SOFAlizer version
 
 #include "AudioPluginUtil.h"
 #include "mysofa.h"  // include libmysofa by, Copyright (c) 2016-2021, Symonics GmbH, Christian Hoene
@@ -32,7 +32,7 @@ namespace Spatializer
     };
 
     const int HRTFLEN = 128; // currently max size of the HRTFs
-	const int MAX_SOFAS = 10; // currently max number of HRTF sets to be loaded on load.
+	const int MAX_SOFAS = 50; // currently max number of HRTF sets to be loaded on load.
 
 	const float GAINCORRECTION = 2.0f;
 
@@ -204,9 +204,9 @@ namespace Spatializer
 			else
 			{
 #if _DEBUG
-				fprintf(sharedData.pConsole, "%s: Can't load, error code: %d (%s)\n", filename, err, strerror(err));
+				//fprintf(sharedData.pConsole, "%s: Can't load, error code: %d (%s)\n", filename, err, strerror(err));
 #endif
-				fprintf(sharedData.Log, "%s: Can't load, error code: %d (%s)\n", filename, err, strerror(err));
+				//fprintf(sharedData.Log, "%s: Can't load, error code: %d (%s)\n", filename, err, strerror(err));
 			}
 		}//iterate through all sofa files
 
