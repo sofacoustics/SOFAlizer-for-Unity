@@ -8,13 +8,14 @@
 
 // Please note that this will only work on Unity 5.2 or higher.
 
-#define SOFALIZER_VERSION "1.5.0" // SOFAlizer version
+#define SOFALIZER_VERSION "1.6.0" // SOFAlizer version
 
 #include "AudioPluginUtil.h"
 #include "mysofa.h"  // include libmysofa by, Copyright (c) 2016-2021, Symonics GmbH, Christian Hoene
 #include <ctime>
 
 #pragma warning(disable : 4996) // disable warnings about using unsafe functions
+#define fequals(a, b) (fabs(a - b) < 0.00001)
 
 extern float reverbmixbuffer[];
 
@@ -34,7 +35,7 @@ namespace Spatializer
     const int HRTFLEN = 128; // currently max size of the HRTFs
 	const int MAX_SOFAS = 50; // currently max number of HRTF sets to be loaded on load.
 
-	const float GAINCORRECTION = 2.0f;
+	//const float GAINCORRECTION = 2.0f;
 
 	static int instanceCounter = 0;
 
@@ -86,17 +87,28 @@ namespace Spatializer
 		t = time(NULL);
 		ptm = localtime(&t);
 		strftime(cur_time, 128, "%Y-%m-%d %H:%M:%S", ptm);
+		int MySOFAmajor, MySOFAminor, MySOFApatch;
+		int normalization = 1; 
+
+		// Check if normalization disabled
+		FILE* fn_normalize;
+		fopen_s(&fn_normalize, ".normalization_disabled", "r");
+		if (fn_normalize != NULL) fclose(fn_normalize);
 
 		// Allocate a console for debugging. Use fprintf(sharedData.pConsole, string); for printing
 #if _DEBUG
 		AllocConsole();
 		freopen_s(&(sharedData.pConsole), "CONOUT$", "wb", stdout);
 		fprintf(sharedData.pConsole, "SOFAlizer %s: SOFA-based spatializer (c) Piotr Majdak & Michael Mihocic, ARI, OeAW\n", SOFALIZER_VERSION);
+		mysofa_getversion(&MySOFAmajor, &MySOFAminor, &MySOFApatch);
+		fprintf(sharedData.pConsole, "libmysofa version:%u.%u.%u\n", MySOFAmajor, MySOFAminor, MySOFApatch);
 		fprintf(sharedData.pConsole, "%s\n", cur_time);
 		fprintf(sharedData.pConsole, "System sampling rate: %u, Buffer size:%u samples\n", state->samplerate, state->dspbuffersize);
 #endif
 		fopen_s(&(sharedData.Log), "SOFAlizer.log", "a");
 		fprintf(sharedData.Log, "SOFAlizer %s: SOFA-based spatializer (c) Piotr Majdak & Michael Mihocic, ARI, OeAW\n", SOFALIZER_VERSION);
+		mysofa_getversion(&MySOFAmajor, &MySOFAminor, &MySOFApatch);
+		fprintf(sharedData.pConsole, "libmysofa version:%u.%u.%u\n", MySOFAmajor, MySOFAminor, MySOFApatch);
 		fprintf(sharedData.Log, "%s\n", cur_time);
 		fprintf(sharedData.Log, "System sampling rate: %u Hz, Buffer size:%u samples\n", state->samplerate, state->dspbuffersize);
 
@@ -149,7 +161,11 @@ namespace Spatializer
 						}
 
 						// Scale HRTFs to have a normalized amplitude relative to the frontal position
-						mysofa_loudness(sharedData.mysofa[i]);
+						float gain = 1.0f;
+						if (fn_normalize == NULL) gain=mysofa_loudness(sharedData.mysofa[i]);
+#if _DEBUG
+						if ((gain > 1.01) || (gain < 0.99)) fprintf(sharedData.pConsole, "--> amplified by %6.2f\n", gain);
+#endif
 
 						// Determine the final length of each IR
 						unsigned int length; // length of the IRs to be copied 
@@ -210,6 +226,7 @@ namespace Spatializer
 			}
 		}//iterate through all sofa files
 
+		fclose(sharedData.Log);
 	}
 
 	void UnloadSOFAs(void)
@@ -217,8 +234,12 @@ namespace Spatializer
 #if _DEBUG
 		fprintf(sharedData.pConsole, "Unloaded!\n\n");
 #endif
-		fprintf(sharedData.Log, "Unloaded! **************************************************************************\n\n");
-		fclose(sharedData.Log);
+		fopen_s(&(sharedData.Log), "SOFAlizer.log", "a");
+		if (sharedData.Log != 0)
+		{
+			fprintf(sharedData.Log, "Unloaded! *******************************\n\n");
+			fclose(sharedData.Log);
+		}
 
 		for (unsigned int i = 0; i < MAX_SOFAS; i++)
 		{

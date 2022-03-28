@@ -55,6 +55,13 @@ Acknowledgements:
 History:
 --------
 
+Version 1.6.0
+=============
+* Shows the version of libmysofa
+* Closes the log file after loading, re-opens on unloading
+* Shows the amplification applied during loudness normalization
+* To disable the gain normalization on HRTF-set load, create a file ".normalization_disabled" in the root directory of this project
+
 Version 1.5.0
 =============
 * Loads up to 50 HRTF sets
