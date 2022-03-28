@@ -91,7 +91,7 @@ namespace Spatializer
 		int normalization = 1; 
 
 		// Check if normalization disabled
-		FILE* fn_normalize;
+		FILE* fn_normalize=NULL;
 		fopen_s(&fn_normalize, ".normalization_disabled", "r");
 		if (fn_normalize != NULL) fclose(fn_normalize);
 
