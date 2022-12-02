@@ -29,7 +29,7 @@ jobs:
       uses: actions/upload-artifact@v3.1.1
       with:
         name: SOFAlizer-for-Unity
-        path: "NativeCode/VisualStudio/build/Release/"
+        path: "NativeCode/VisualStudio/build/Release/AudioPluginSOFA.dll"
 
     - name: GitHub pre-release
       uses: "marvinpinto/action-automatic-releases@latest"
@@ -38,4 +38,4 @@ jobs:
         automatic_release_tag: "latest"
         prerelease: true
         title: "SOFAlizer for Unity"
-        files: "NativeCode/VisualStudio/build/Release/*"
+        files: "NativeCode/VisualStudio/build/Release/AudioPluginSOFA.dll"
