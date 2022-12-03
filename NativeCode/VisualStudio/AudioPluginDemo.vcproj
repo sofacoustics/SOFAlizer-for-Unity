@@ -95,7 +95,7 @@
 			IntermediateDirectory="build/$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="0"
-			WholeProgramOptimization="1"
+			WholeProgramOptimization="0"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"

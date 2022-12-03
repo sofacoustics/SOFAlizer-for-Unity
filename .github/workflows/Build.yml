@@ -1,0 +1,41 @@
+name: Build
+
+on:
+  push
+
+env:
+  SOLUTION_FILE_PATH: NativeCode\VisualStudio\AudioPluginSOFA.sln
+  BUILD_CONFIGURATION: Release
+
+jobs:
+  Win64:
+    runs-on: windows-2022
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Restore NuGet packages
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: nuget restore ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Build
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=x64 ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        name: SOFAlizer-for-Unity
+        path: "NativeCode/VisualStudio/build/Release/AudioPluginSOFA.dll"
+
+    - name: GitHub pre-release
+      uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{secrets.GITHUB_TOKEN}}"
+        automatic_release_tag: "latest"
+        prerelease: true
+        title: "SOFAlizer for Unity"
+        files: "NativeCode/VisualStudio/build/Release/AudioPluginSOFA.dll"
